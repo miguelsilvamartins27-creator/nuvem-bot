@@ -1468,19 +1468,6 @@ function gerarRespostaIA(
 // ======================================================
 // YT-DLP
 // ======================================================
-//
-// O YouTube atualmente pode exigir:
-// - Runtime JavaScript
-// - EJS
-//
-// Em vez de depender da conversão de opções
-// do youtube-dl-exec, executamos diretamente
-// o yt-dlp.exe/binário fornecido por ele.
-//
-// Isso garante que os argumentos cheguem
-// realmente ao yt-dlp.
-//
-// ======================================================
 
 async function executarYoutubeDL(
     url,
@@ -1565,6 +1552,14 @@ async function executarYoutubeDL(
     }
 
     // ==================================================
+    // DIAGNÓSTICO DETALHADO
+    // ==================================================
+
+    argumentos.push(
+        '--verbose'
+    );
+
+    // ==================================================
     // JAVASCRIPT / EJS
     // ==================================================
 
@@ -1610,6 +1605,10 @@ async function executarYoutubeDL(
 
     console.log(
         '⚙️ EJS: ejs:github'
+    );
+
+    console.log(
+        '🔍 Diagnóstico: --verbose'
     );
 
     console.log(
