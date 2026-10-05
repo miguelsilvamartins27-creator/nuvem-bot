@@ -1,0 +1,6 @@
+node_modules/
+.env
+auth_info/
+auth_info_baileys/
+bot_data/
+*.log
