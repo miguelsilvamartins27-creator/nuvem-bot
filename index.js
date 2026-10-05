@@ -24,67 +24,111 @@ import Groq from 'groq-sdk';
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+// ======================================================
+// EXEC FILE
+// ======================================================
+
+const execFileAsync =
+    promisify(execFile);
+
 // ======================================================
 // FFmpeg
 // ======================================================
 
-ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfmpegPath(
+    ffmpegPath
+);
 
 // ======================================================
 // SERVIDOR HTTP - RENDER
 // ======================================================
 
-const app = express();
+const app =
+    express();
 
-app.get('/', (req, res) => {
-    res.status(200).send('🤖 Bot de WhatsApp online!');
-});
+app.get(
+    '/',
+    (req, res) => {
+        res.status(200)
+            .send(
+                '🤖 Bot de WhatsApp online!'
+            );
+    }
+);
 
-app.get('/ping', (req, res) => {
-    res.status(200).send('OK');
-});
+app.get(
+    '/ping',
+    (req, res) => {
+        res.status(200)
+            .send('OK');
+    }
+);
 
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        online: true,
-        bot: 'WhatsApp Bot',
-        ai: MODELO_IA,
-        uptime: Math.floor(process.uptime())
-    });
-});
-
-const PORT = process.env.PORT || 10000;
-
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(
-        `🌐 Servidor HTTP rodando na porta ${PORT}`
-    );
-});
+const PORT =
+    process.env.PORT ||
+    10000;
 
 // ======================================================
 // CONFIGURAÇÕES
 // ======================================================
 
-const MEU_CHAT = '10531511513088@lid';
+const MEU_CHAT =
+    '10531511513088@lid';
 
-// Pastas possíveis da sessão antiga.
-// O bot procura nas duas para evitar perder
-// a sessão que já está funcionando.
 const AUTH_DIRS = [
     './auth_info',
     './auth_info_baileys'
 ];
 
-const PASTA_DADOS = './bot_data';
+const PASTA_DADOS =
+    './bot_data';
 
-const ARQUIVO_USUARIO = path.join(
-    PASTA_DADOS,
-    'usuario.json'
-);
+const ARQUIVO_USUARIO =
+    path.join(
+        PASTA_DADOS,
+        'usuario.json'
+    );
 
-const logger = pino({
-    level: 'silent'
-});
+const logger =
+    pino({
+        level: 'silent'
+    });
+
+// ======================================================
+// GROQ
+// ======================================================
+
+const MODELO_IA =
+    'openai/gpt-oss-120b';
+
+const GROQ_API_KEY =
+    process.env.GROQ_API_KEY;
+
+if (!GROQ_API_KEY) {
+    console.error(
+        '❌ GROQ_API_KEY não encontrada.'
+    );
+
+    process.exit(1);
+}
+
+const groq =
+    new Groq({
+        apiKey:
+            GROQ_API_KEY
+    });
+
+const LIMITE_HISTORICO =
+    16;
+
+let historicoIA =
+    [];
+
+let groqBloqueadoAte =
+    0;
 
 // ======================================================
 // SUPABASE
@@ -112,63 +156,50 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
     process.exit(1);
 }
 
-const supabase = createClient(
-    SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
+const supabase =
+    createClient(
+        SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY,
+        {
+            auth: {
+                autoRefreshToken:
+                    false,
+
+                persistSession:
+                    false
+            }
         }
-    }
-);
-
-const TABELA_AUTH = 'baileys_auth';
-
-// ======================================================
-// GROQ
-// ======================================================
-
-const GROQ_API_KEY =
-    process.env.GROQ_API_KEY;
-
-if (!GROQ_API_KEY) {
-    console.error(
-        '❌ GROQ_API_KEY não encontrada.'
     );
 
-    process.exit(1);
-}
-
-const groq = new Groq({
-    apiKey: GROQ_API_KEY
-});
-
-const MODELO_IA =
-    'openai/gpt-oss-120b';
-
-const LIMITE_HISTORICO = 16;
-
-let historicoIA = [];
-
-let groqBloqueadoAte = 0;
+const TABELA_AUTH =
+    'baileys_auth';
 
 // ======================================================
 // PERFIL
 // ======================================================
 
 let usuario = {
-    configurado: false,
-    nome: '',
-    idioma: '',
-    estilo: '',
-    nomeBot: ''
+    configurado:
+        false,
+
+    nome:
+        '',
+
+    idioma:
+        '',
+
+    estilo:
+        '',
+
+    nomeBot:
+        ''
 };
 
-let etapaConfiguracao = null;
+let etapaConfiguracao =
+    null;
 
 // ======================================================
-// CONTROLE DO BOT
+// CONTROLE
 // ======================================================
 
 const mensagensDoBot =
@@ -183,20 +214,66 @@ let filaProcessamento =
 let filaIA =
     Promise.resolve();
 
-let botIniciando = false;
+let botIniciando =
+    false;
 
-let botConectado = false;
+let botConectado =
+    false;
 
-let reconexaoAgendada = false;
+let reconexaoAgendada =
+    false;
+
+let socketAtual =
+    null;
 
 // ======================================================
 // CONSTANTES
 // ======================================================
 
-const MAX_TENTATIVAS_GROQ = 3;
+const MAX_TENTATIVAS_GROQ =
+    3;
 
 const MAX_TAMANHO_AUDIO =
     30 * 1024 * 1024;
+
+// ======================================================
+// SERVIDOR
+// ======================================================
+
+app.get(
+    '/health',
+    (req, res) => {
+        res.status(200)
+            .json({
+                online:
+                    true,
+
+                bot:
+                    'WhatsApp Bot',
+
+                ai:
+                    MODELO_IA,
+
+                conectado:
+                    botConectado,
+
+                uptime:
+                    Math.floor(
+                        process.uptime()
+                    )
+            });
+    }
+);
+
+app.listen(
+    PORT,
+    '0.0.0.0',
+    () => {
+        console.log(
+            `🌐 Servidor HTTP rodando na porta ${PORT}`
+        );
+    }
+);
 
 // ======================================================
 // FUNÇÕES AUXILIARES
@@ -223,20 +300,32 @@ function adicionarAoSet(
 
     set.add(valor);
 
-    if (set.size > limite) {
+    if (
+        set.size >
+        limite
+    ) {
         const primeiro =
             set.values()
                 .next()
                 .value;
 
-        set.delete(primeiro);
+        set.delete(
+            primeiro
+        );
     }
 }
 
-function textoSeguro(texto) {
-    return String(texto || '')
+function textoSeguro(
+    texto
+) {
+    return String(
+        texto || ''
+    )
         .trim()
-        .replace(/\r/g, '');
+        .replace(
+            /\r/g,
+            ''
+        );
 }
 
 function limitarTexto(
@@ -244,10 +333,13 @@ function limitarTexto(
     limite = 4000
 ) {
     const valor =
-        textoSeguro(texto);
+        textoSeguro(
+            texto
+        );
 
     if (
-        valor.length <= limite
+        valor.length <=
+        limite
     ) {
         return valor;
     }
@@ -256,7 +348,8 @@ function limitarTexto(
         valor.slice(
             0,
             limite
-        ) + '...'
+        ) +
+        '...'
     );
 }
 
@@ -271,8 +364,11 @@ async function apagarPastaSeguro(
         await fs.rm(
             pasta,
             {
-                recursive: true,
-                force: true
+                recursive:
+                    true,
+
+                force:
+                    true
             }
         );
     } catch (erro) {
@@ -294,16 +390,26 @@ async function criarTempDir(
     );
 }
 
-function isUrl(texto) {
+function isUrl(
+    texto
+) {
     return /^https?:\/\/\S+$/i.test(
-        textoSeguro(texto)
+        textoSeguro(
+            texto
+        )
     );
 }
+
+// ======================================================
+// MENSAGENS
+// ======================================================
 
 function extrairTextoMensagem(
     mensagem
 ) {
-    if (!mensagem?.message) {
+    if (
+        !mensagem?.message
+    ) {
         return '';
     }
 
@@ -315,25 +421,32 @@ function extrairTextoMensagem(
 
     return (
         normalizada?.conversation ||
+
         normalizada
             ?.extendedTextMessage
             ?.text ||
+
         normalizada
             ?.imageMessage
             ?.caption ||
+
         normalizada
             ?.videoMessage
             ?.caption ||
+
         normalizada
             ?.documentMessage
             ?.caption ||
+
         normalizada
             ?.buttonsResponseMessage
             ?.selectedButtonId ||
+
         normalizada
             ?.listResponseMessage
             ?.singleSelectReply
             ?.selectedRowId ||
+
         ''
     );
 }
@@ -341,7 +454,9 @@ function extrairTextoMensagem(
 function obterMensagemNormalizada(
     mensagem
 ) {
-    if (!mensagem?.message) {
+    if (
+        !mensagem?.message
+    ) {
         return null;
     }
 
@@ -438,7 +553,8 @@ function criarMensagemCitataDeVideo(
                 contextInfo
                     ?.stanzaId,
 
-            fromMe: false
+            fromMe:
+                false
         },
 
         message: {
@@ -449,30 +565,21 @@ function criarMensagemCitataDeVideo(
 }
 
 // ======================================================
-// AUTH STATE - SUPABASE
-// ======================================================
-//
-// Cada arquivo que normalmente seria salvo em
-// auth_info/ passa a ser uma linha da tabela:
-//
-// baileys_auth
-//
-// Exemplos:
-//
-// creds.json
-// session-xxxx.json
-// pre-key-xxxx.json
-// app-state-sync-key-xxxx.json
-//
-// Assim o Render não depende do armazenamento local.
+// SUPABASE AUTH
 // ======================================================
 
 function corrigirNomeArquivo(
     arquivo
 ) {
     return arquivo
-        ?.replace(/\//g, '__')
-        ?.replace(/:/g, '-');
+        ?.replace(
+            /\//g,
+            '__'
+        )
+        ?.replace(
+            /:/g,
+            '-'
+        );
 }
 
 function serializarAuth(
@@ -491,20 +598,19 @@ function desserializarAuth(
 ) {
     if (
         valor === null ||
-        typeof valor === 'undefined'
+        typeof valor ===
+            'undefined'
     ) {
         return null;
     }
 
     return JSON.parse(
-        JSON.stringify(valor),
+        JSON.stringify(
+            valor
+        ),
         BufferJSON.reviver
     );
 }
-
-// ======================================================
-// LER ARQUIVO DO SUPABASE
-// ======================================================
 
 async function supabaseLerArquivo(
     arquivo
@@ -512,11 +618,19 @@ async function supabaseLerArquivo(
     const {
         data,
         error
-    } = await supabase
-        .from(TABELA_AUTH)
-        .select('data')
-        .eq('id', arquivo)
-        .maybeSingle();
+    } =
+        await supabase
+            .from(
+                TABELA_AUTH
+            )
+            .select(
+                'data'
+            )
+            .eq(
+                'id',
+                arquivo
+            )
+            .maybeSingle();
 
     if (error) {
         throw new Error(
@@ -533,10 +647,6 @@ async function supabaseLerArquivo(
     );
 }
 
-// ======================================================
-// SALVAR ARQUIVO NO SUPABASE
-// ======================================================
-
 async function supabaseSalvarArquivo(
     arquivo,
     valor
@@ -548,22 +658,28 @@ async function supabaseSalvarArquivo(
 
     const {
         error
-    } = await supabase
-        .from(TABELA_AUTH)
-        .upsert(
-            {
-                id: arquivo,
+    } =
+        await supabase
+            .from(
+                TABELA_AUTH
+            )
+            .upsert(
+                {
+                    id:
+                        arquivo,
 
-                data: dados,
+                    data:
+                        dados,
 
-                updated_at:
-                    new Date()
-                        .toISOString()
-            },
-            {
-                onConflict: 'id'
-            }
-        );
+                    updated_at:
+                        new Date()
+                            .toISOString()
+                },
+                {
+                    onConflict:
+                        'id'
+                }
+            );
 
     if (error) {
         throw new Error(
@@ -572,19 +688,21 @@ async function supabaseSalvarArquivo(
     }
 }
 
-// ======================================================
-// APAGAR ARQUIVO DO SUPABASE
-// ======================================================
-
 async function supabaseApagarArquivo(
     arquivo
 ) {
     const {
         error
-    } = await supabase
-        .from(TABELA_AUTH)
-        .delete()
-        .eq('id', arquivo);
+    } =
+        await supabase
+            .from(
+                TABELA_AUTH
+            )
+            .delete()
+            .eq(
+                'id',
+                arquivo
+            );
 
     if (error) {
         throw new Error(
@@ -593,19 +711,23 @@ async function supabaseApagarArquivo(
     }
 }
 
-// ======================================================
-// VERIFICAR SESSÃO
-// ======================================================
-
 async function verificarSessaoSupabase() {
     const {
         data,
         error
-    } = await supabase
-        .from(TABELA_AUTH)
-        .select('id')
-        .eq('id', 'creds.json')
-        .maybeSingle();
+    } =
+        await supabase
+            .from(
+                TABELA_AUTH
+            )
+            .select(
+                'id'
+            )
+            .eq(
+                'id',
+                'creds.json'
+            )
+            .maybeSingle();
 
     if (error) {
         throw new Error(
@@ -616,10 +738,6 @@ async function verificarSessaoSupabase() {
     return !!data;
 }
 
-// ======================================================
-// MIGRAR SESSÃO LOCAL → SUPABASE
-// ======================================================
-
 async function migrarSessaoLocalParaSupabase() {
     console.log(
         '🔄 Verificando sessão local para migração...'
@@ -628,7 +746,9 @@ async function migrarSessaoLocalParaSupabase() {
     const existeNoSupabase =
         await verificarSessaoSupabase();
 
-    if (existeNoSupabase) {
+    if (
+        existeNoSupabase
+    ) {
         console.log(
             '☁️ Sessão já existe no Supabase.'
         );
@@ -669,7 +789,8 @@ async function migrarSessaoLocalParaSupabase() {
             `📂 Sessão local encontrada em: ${AUTH_DIR}`
         );
 
-        let quantidade = 0;
+        let quantidade =
+            0;
 
         for (
             const arquivo
@@ -719,7 +840,7 @@ async function migrarSessaoLocalParaSupabase() {
             quantidade > 0
         ) {
             console.log(
-                `✅ Migração concluída: ${quantidade} arquivo(s) enviados para o Supabase.`
+                `✅ Migração concluída: ${quantidade} arquivo(s).`
             );
 
             return true;
@@ -732,10 +853,6 @@ async function migrarSessaoLocalParaSupabase() {
 
     return false;
 }
-
-// ======================================================
-// PREPARAR AUTH STATE
-// ======================================================
 
 async function prepararAuthState() {
     let existeNoSupabase =
@@ -752,7 +869,8 @@ async function prepararAuthState() {
             await migrarSessaoLocalParaSupabase();
 
         if (migrou) {
-            existeNoSupabase = true;
+            existeNoSupabase =
+                true;
         }
     }
 
@@ -773,6 +891,7 @@ async function prepararAuthState() {
             'creds.json',
             creds
         );
+
     } else {
         console.log(
             '☁️ Credenciais carregadas do Supabase.'
@@ -780,97 +899,101 @@ async function prepararAuthState() {
     }
 
     const keys = {
-        get: async (
-            type,
-            ids
-        ) => {
-            const data = {};
+        get:
+            async (
+                type,
+                ids
+            ) => {
+                const data =
+                    {};
 
-            await Promise.all(
-                ids.map(
-                    async id => {
-                        const arquivo =
-                            corrigirNomeArquivo(
-                                `${type}-${id}.json`
-                            );
+                await Promise.all(
+                    ids.map(
+                        async id => {
+                            const arquivo =
+                                corrigirNomeArquivo(
+                                    `${type}-${id}.json`
+                                );
 
-                        let value =
-                            await supabaseLerArquivo(
-                                arquivo
-                            );
+                            let value =
+                                await supabaseLerArquivo(
+                                    arquivo
+                                );
 
-                        if (
-                            type ===
-                                'app-state-sync-key' &&
-                            value
-                        ) {
-                            value =
-                                proto
-                                    .Message
-                                    .AppStateSyncKeyData
-                                    .fromObject(
-                                        value
-                                    );
+                            if (
+                                type ===
+                                    'app-state-sync-key' &&
+                                value
+                            ) {
+                                value =
+                                    proto
+                                        .Message
+                                        .AppStateSyncKeyData
+                                        .fromObject(
+                                            value
+                                        );
+                            }
+
+                            data[id] =
+                                value;
                         }
+                    )
+                );
 
-                        data[id] =
-                            value;
-                    }
-                )
-            );
+                return data;
+            },
 
-            return data;
-        },
-
-        set: async data => {
-            const tarefas = [];
-
-            for (
-                const categoria
-                in data
-            ) {
-                const valores =
-                    data[
-                        categoria
-                    ];
-
-                if (!valores) {
-                    continue;
-                }
+        set:
+            async data => {
+                const tarefas =
+                    [];
 
                 for (
-                    const id
-                    in valores
+                    const categoria
+                    in data
                 ) {
-                    const value =
-                        valores[id];
+                    const valores =
+                        data[
+                            categoria
+                        ];
 
-                    const arquivo =
-                        corrigirNomeArquivo(
-                            `${categoria}-${id}.json`
-                        );
+                    if (!valores) {
+                        continue;
+                    }
 
-                    if (value) {
-                        tarefas.push(
-                            supabaseSalvarArquivo(
-                                arquivo,
-                                value
-                            )
-                        );
-                    } else {
-                        tarefas.push(
-                            supabaseApagarArquivo(
-                                arquivo
-                            )
-                        );
+                    for (
+                        const id
+                        in valores
+                    ) {
+                        const value =
+                            valores[id];
+
+                        const arquivo =
+                            corrigirNomeArquivo(
+                                `${categoria}-${id}.json`
+                            );
+
+                        if (value) {
+                            tarefas.push(
+                                supabaseSalvarArquivo(
+                                    arquivo,
+                                    value
+                                )
+                            );
+                        } else {
+                            tarefas.push(
+                                supabaseApagarArquivo(
+                                    arquivo
+                                )
+                            );
+                        }
                     }
                 }
-            }
 
-            await Promise.all(
-                tarefas
-            );
-        }
+                await Promise.all(
+                    tarefas
+                );
+            }
     };
 
     const saveCreds =
@@ -904,7 +1027,8 @@ async function salvarUsuario() {
     await fs.mkdir(
         PASTA_DADOS,
         {
-            recursive: true
+            recursive:
+                true
         }
     );
 
@@ -924,7 +1048,8 @@ async function carregarUsuario() {
         await fs.mkdir(
             PASTA_DADOS,
             {
-                recursive: true
+                recursive:
+                    true
             }
         );
 
@@ -940,11 +1065,21 @@ async function carregarUsuario() {
             );
 
         usuario = {
-            configurado: false,
-            nome: '',
-            idioma: '',
-            estilo: '',
-            nomeBot: '',
+            configurado:
+                false,
+
+            nome:
+                '',
+
+            idioma:
+                '',
+
+            estilo:
+                '',
+
+            nomeBot:
+                '',
+
             ...salvo
         };
 
@@ -962,11 +1097,12 @@ async function carregarUsuario() {
 }
 
 function limparHistoricoIA() {
-    historicoIA = [];
+    historicoIA =
+        [];
 }
 
 // ======================================================
-// ERROS DO GROQ
+// GROQ - ERROS
 // ======================================================
 
 function obterStatusErro(
@@ -1162,13 +1298,13 @@ Direto = objetivo e rápido.
 Detalhado = explique com mais profundidade.
 
 Descontraído = natural, amigável e casual.
-
-Se uma resposta puder ser dada de maneira simples, seja simples.
 `;
 
     const mensagens = [
         {
-            role: 'system',
+            role:
+                'system',
+
             content:
                 instrucaoSistema
         },
@@ -1176,7 +1312,9 @@ Se uma resposta puder ser dada de maneira simples, seja simples.
         ...historicoIA,
 
         {
-            role: 'user',
+            role:
+                'user',
+
             content:
                 texto
         }
@@ -1228,13 +1366,17 @@ Se uma resposta puder ser dada de maneira simples, seja simples.
 
             historicoIA.push(
                 {
-                    role: 'user',
+                    role:
+                        'user',
+
                     content:
                         texto
                 },
 
                 {
-                    role: 'assistant',
+                    role:
+                        'assistant',
+
                     content:
                         textoResposta
                 }
@@ -1271,7 +1413,8 @@ Se uma resposta puder ser dada de maneira simples, seja simples.
 
                 groqBloqueadoAte =
                     Date.now() +
-                    segundos * 1000;
+                    segundos *
+                        1000;
 
                 throw erro;
             }
@@ -1283,15 +1426,12 @@ Se uma resposta puder ser dada de maneira simples, seja simples.
                     erro
                 )
             ) {
-                const espera =
+                await esperar(
                     1500 *
                     Math.pow(
                         2,
                         tentativa - 1
-                    );
-
-                await esperar(
-                    espera
+                    )
                 );
 
                 continue;
@@ -1326,23 +1466,346 @@ function gerarRespostaIA(
 }
 
 // ======================================================
-// DOWNLOAD / YT-DLP
+// YT-DLP
+// ======================================================
+//
+// O YouTube atualmente pode exigir:
+// - Runtime JavaScript
+// - EJS
+//
+// Em vez de depender da conversão de opções
+// do youtube-dl-exec, executamos diretamente
+// o yt-dlp.exe/binário fornecido por ele.
+//
+// Isso garante que os argumentos cheguem
+// realmente ao yt-dlp.
+//
 // ======================================================
 
 async function executarYoutubeDL(
     url,
-    opcoes,
+    opcoes = {},
     timeout = 120000
 ) {
-    return await youtubedl(
-        url,
-        opcoes,
-        {
-            timeout,
-            killSignal: 'SIGKILL'
+    const binario =
+        youtubedl
+            ?.constants
+            ?.YOUTUBE_DL_PATH;
+
+    if (!binario) {
+        throw new Error(
+            'Não foi possível localizar o executável do yt-dlp.'
+        );
+    }
+
+    const argumentos =
+        [];
+
+    // ==================================================
+    // CONVERTER OPÇÕES JS -> CLI DO YT-DLP
+    // ==================================================
+
+    for (
+        const [chave, valor]
+        of Object.entries(
+            opcoes
+        )
+    ) {
+        if (
+            valor ===
+                undefined ||
+            valor ===
+                null ||
+            valor ===
+                false
+        ) {
+            continue;
         }
+
+        const nome =
+            chave.replace(
+                /[A-Z]/g,
+                letra =>
+                    `-${letra.toLowerCase()}`
+            );
+
+        if (
+            valor ===
+            true
+        ) {
+            argumentos.push(
+                `--${nome}`
+            );
+
+            continue;
+        }
+
+        if (
+            Array.isArray(
+                valor
+            )
+        ) {
+            for (
+                const item
+                of valor
+            ) {
+                argumentos.push(
+                    `--${nome}`,
+                    String(item)
+                );
+            }
+
+            continue;
+        }
+
+        argumentos.push(
+            `--${nome}`,
+            String(valor)
+        );
+    }
+
+    // ==================================================
+    // JAVASCRIPT / EJS
+    // ==================================================
+
+    argumentos.push(
+        '--js-runtimes',
+        `node:${process.execPath}`
     );
+
+    argumentos.push(
+        '--remote-components',
+        'ejs:github'
+    );
+
+    // ==================================================
+    // URL
+    // ==================================================
+
+    argumentos.push(
+        '--',
+        url
+    );
+
+    console.log('');
+    console.log(
+        '▶️ EXECUTANDO YT-DLP'
+    );
+
+    console.log(
+        `📦 Binário: ${binario}`
+    );
+
+    console.log(
+        `🟢 Node: ${process.execPath}`
+    );
+
+    console.log(
+        `🌐 URL: ${url}`
+    );
+
+    console.log(
+        '⚙️ Runtime JS: Node'
+    );
+
+    console.log(
+        '⚙️ EJS: ejs:github'
+    );
+
+    console.log(
+        `⏱️ Timeout: ${timeout}ms`
+    );
+
+    console.log(
+        '⚙️ Argumentos:',
+        argumentos.join(' ')
+    );
+
+    try {
+        const resultado =
+            await execFileAsync(
+                binario,
+                argumentos,
+                {
+                    timeout,
+
+                    killSignal:
+                        'SIGKILL',
+
+                    windowsHide:
+                        true,
+
+                    maxBuffer:
+                        20 * 1024 * 1024,
+
+                    encoding:
+                        'utf8'
+                }
+            );
+
+        const stdout =
+            resultado?.stdout ||
+            '';
+
+        const stderr =
+            resultado?.stderr ||
+            '';
+
+        if (
+            stderr.trim()
+        ) {
+            console.log(
+                'ℹ️ yt-dlp stderr:',
+                stderr.trim()
+            );
+        }
+
+        // ==================================================
+        // JSON
+        // ==================================================
+
+        if (
+            opcoes.dumpSingleJson
+        ) {
+            try {
+                return JSON.parse(
+                    stdout
+                );
+            } catch (erroJson) {
+                console.error(
+                    '❌ Saída do yt-dlp:',
+                    stdout
+                );
+
+                throw new Error(
+                    'O yt-dlp terminou, mas não retornou um JSON válido.'
+                );
+            }
+        }
+
+        return stdout;
+
+    } catch (erro) {
+        const stdout =
+            erro?.stdout ||
+            '';
+
+        const stderr =
+            erro?.stderr ||
+            '';
+
+        console.error('');
+        console.error(
+            '❌ YT-DLP FALHOU'
+        );
+
+        console.error(
+            `Código: ${erro?.code ?? 'desconhecido'}`
+        );
+
+        if (
+            stdout.trim()
+        ) {
+            console.error(
+                'stdout:',
+                stdout.trim()
+            );
+        }
+
+        if (
+            stderr.trim()
+        ) {
+            console.error(
+                'stderr:',
+                stderr.trim()
+            );
+        }
+
+        if (
+            erro?.killed ||
+            erro?.signal ===
+                'SIGKILL'
+        ) {
+            const timeoutErro =
+                new Error(
+                    'O yt-dlp excedeu o tempo limite.'
+                );
+
+            timeoutErro.cause =
+                erro;
+
+            throw timeoutErro;
+        }
+
+        throw erro;
+    }
 }
+
+// ======================================================
+// VERIFICAR YT-DLP
+// ======================================================
+
+async function verificarYoutubeDL() {
+    const binario =
+        youtubedl
+            ?.constants
+            ?.YOUTUBE_DL_PATH;
+
+    if (!binario) {
+        throw new Error(
+            'Executável do yt-dlp não encontrado.'
+        );
+    }
+
+    try {
+        const resultado =
+            await execFileAsync(
+                binario,
+                [
+                    '--version'
+                ],
+                {
+                    timeout:
+                        30000,
+
+                    windowsHide:
+                        true,
+
+                    encoding:
+                        'utf8'
+                }
+            );
+
+        console.log(
+            `🎵 yt-dlp versão: ${textoSeguro(resultado.stdout)}`
+        );
+
+        console.log(
+            `📦 yt-dlp: ${binario}`
+        );
+
+        console.log(
+            `🟢 Node: ${process.execPath}`
+        );
+
+        console.log(
+            `🟢 Node versão: ${process.version}`
+        );
+
+    } catch (erro) {
+        console.error(
+            '❌ Não foi possível verificar o yt-dlp:',
+            erro?.message ||
+            erro
+        );
+
+        throw erro;
+    }
+}
+
+// ======================================================
+// PROCURAR VÍDEO
+// ======================================================
 
 async function procurarVideo(
     termo
@@ -1355,19 +1818,33 @@ async function procurarVideo(
         await executarYoutubeDL(
             `ytsearch1:${termo}`,
             {
-                dumpSingleJson: true,
-                flatPlaylist: true,
-                noWarnings: true,
-                noCheckCertificates: true,
-                skipDownload: true,
-                playlistEnd: 1,
-                noPlaylist: true
+                dumpSingleJson:
+                    true,
+
+                flatPlaylist:
+                    true,
+
+                noWarnings:
+                    true,
+
+                noCheckCertificates:
+                    true,
+
+                skipDownload:
+                    true,
+
+                playlistEnd:
+                    1,
+
+                noPlaylist:
+                    true
             },
-            60000
+            90000
         );
 
     const video =
-        resultado?.entries?.[0];
+        resultado
+            ?.entries?.[0];
 
     if (!video) {
         throw new Error(
@@ -1403,6 +1880,10 @@ async function procurarVideo(
     };
 }
 
+// ======================================================
+// ENCONTRAR ÁUDIO
+// ======================================================
+
 async function encontrarArquivoAudio(
     pasta
 ) {
@@ -1434,6 +1915,10 @@ async function encontrarArquivoAudio(
     );
 }
 
+// ======================================================
+// BAIXAR ÁUDIO
+// ======================================================
+
 async function baixarAudio(
     url,
     pasta
@@ -1445,7 +1930,8 @@ async function baixarAudio(
     await executarYoutubeDL(
         url,
         {
-            extractAudio: true,
+            extractAudio:
+                true,
 
             audioFormat:
                 'mp3',
@@ -1471,13 +1957,19 @@ async function baixarAudio(
             ffmpegLocation:
                 ffmpegPath
         },
-
         180000
     );
 
-    return await encontrarArquivoAudio(
-        pasta
+    const arquivo =
+        await encontrarArquivoAudio(
+            pasta
+        );
+
+    console.log(
+        `✅ Áudio encontrado: ${arquivo}`
     );
+
+    return arquivo;
 }
 
 // ======================================================
@@ -1526,7 +2018,7 @@ async function enviarAudio(
 }
 
 // ======================================================
-// CONVERTER VÍDEO PARA ÁUDIO
+// VÍDEO → ÁUDIO
 // ======================================================
 
 async function converterVideoParaAudio(
@@ -1607,15 +2099,23 @@ async function criarFigurinhaImagem(
                     'contain',
 
                 background: {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    alpha: 0
+                    r:
+                        0,
+
+                    g:
+                        0,
+
+                    b:
+                        0,
+
+                    alpha:
+                        0
                 }
             }
         )
         .webp({
-            quality: 90
+            quality:
+                90
         })
         .toBuffer();
 }
@@ -1653,28 +2153,32 @@ async function criarFigurinhaVideo(
             ffmpeg(
                 entrada
             )
-                .duration(6)
-                .outputOptions([
-                    '-vf',
-                    'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=black@0',
+                .duration(
+                    6
+                )
+                .outputOptions(
+                    [
+                        '-vf',
+                        'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=black@0',
 
-                    '-loop',
-                    '0',
+                        '-loop',
+                        '0',
 
-                    '-an',
+                        '-an',
 
-                    '-c:v',
-                    'libwebp',
+                        '-c:v',
+                        'libwebp',
 
-                    '-q:v',
-                    '60',
+                        '-q:v',
+                        '60',
 
-                    '-preset',
-                    'default',
+                        '-preset',
+                        'default',
 
-                    '-pix_fmt',
-                    'yuva420p'
-                ])
+                        '-pix_fmt',
+                        'yuva420p'
+                    ]
+                )
                 .output(
                     saida
                 )
@@ -1696,7 +2200,7 @@ async function criarFigurinhaVideo(
 }
 
 // ======================================================
-// MENSAGEM DE ERRO DO VIRAL
+// ERRO VIRAL
 // ======================================================
 
 function mensagemErroViral(
@@ -1704,6 +2208,7 @@ function mensagemErroViral(
 ) {
     const mensagem =
         String(
+            erro?.stderr ||
             erro?.message ||
             erro ||
             ''
@@ -1711,29 +2216,59 @@ function mensagemErroViral(
 
     if (
         mensagem.includes(
-            'timed out'
+            'failed to extract any player response'
         ) ||
         mensagem.includes(
-            'timeout'
+            'javascript'
+        ) ||
+        mensagem.includes(
+            'ejs'
+        ) ||
+        mensagem.includes(
+            'challenge'
+        ) ||
+        mensagem.includes(
+            'player response'
         )
     ) {
         return (
-            '⏱️ O download demorou demais e foi cancelado.\n\n' +
-            'Tente novamente ou mande o link direto.'
+            '❌ O YouTube não permitiu a extração desse conteúdo.\n\n' +
+            'O downloader está configurado com o runtime JavaScript e EJS atualizado.\n\n' +
+            'Tente outro vídeo ou outro link.'
         );
     }
 
     if (
         mensagem.includes(
-            'not found'
+            'timed out'
         ) ||
         mensagem.includes(
+            'timeout'
+        ) ||
+        mensagem.includes(
+            'time limit'
+        )
+    ) {
+        return (
+            '⏱️ O download demorou demais e foi cancelado.\n\n' +
+            'Tente novamente.'
+        );
+    }
+
+    if (
+        mensagem.includes(
             'nenhum resultado'
+        ) ||
+        mensagem.includes(
+            'no video results'
+        ) ||
+        mensagem.includes(
+            'no results'
         )
     ) {
         return (
             '❌ Não encontrei esse áudio.\n\n' +
-            'Tente outro nome ou envie um link.'
+            'Tente outro nome ou termo.'
         );
     }
 
@@ -1749,7 +2284,7 @@ function mensagemErroViral(
         )
     ) {
         return (
-            '🔒 Esse conteúdo parece exigir acesso/login e não pôde ser baixado.'
+            '🔒 Esse conteúdo exige acesso/login e não pôde ser baixado.'
         );
     }
 
@@ -1763,14 +2298,27 @@ function mensagemErroViral(
         );
     }
 
+    if (
+        mensagem.includes(
+            'video unavailable'
+        ) ||
+        mensagem.includes(
+            'unavailable'
+        )
+    ) {
+        return (
+            '❌ Esse vídeo não está disponível para reprodução.'
+        );
+    }
+
     return (
         '❌ Não consegui baixar esse áudio.\n\n' +
-        'Tente outro termo ou envie o link direto.'
+        'Tente novamente ou use outro termo/link.'
     );
 }
 
 // ======================================================
-// COMANDOS
+// /CMD
 // ======================================================
 
 async function comandoAjuda(
@@ -1824,11 +2372,20 @@ async function iniciarConfiguracao(
     chatJid
 ) {
     usuario = {
-        configurado: false,
-        nome: '',
-        idioma: '',
-        estilo: '',
-        nomeBot: ''
+        configurado:
+            false,
+
+        nome:
+            '',
+
+        idioma:
+            '',
+
+        estilo:
+            '',
+
+        nomeBot:
+            ''
     };
 
     etapaConfiguracao =
@@ -1858,14 +2415,17 @@ async function processarConfiguracao(
     texto
 ) {
     const valor =
-        textoSeguro(texto);
+        textoSeguro(
+            texto
+        );
 
     if (
         etapaConfiguracao ===
         'nome'
     ) {
         if (
-            valor.length < 2
+            valor.length <
+            2
         ) {
             await sock.sendMessage(
                 chatJid,
@@ -1906,19 +2466,22 @@ async function processarConfiguracao(
         'idioma'
     ) {
         if (
-            valor === '1'
+            valor ===
+            '1'
         ) {
             usuario.idioma =
                 'Português';
 
         } else if (
-            valor === '2'
+            valor ===
+            '2'
         ) {
             usuario.idioma =
                 'English';
 
         } else if (
-            valor === '3'
+            valor ===
+            '3'
         ) {
             usuario.idioma =
                 'Español';
@@ -1959,19 +2522,22 @@ async function processarConfiguracao(
         'estilo'
     ) {
         if (
-            valor === '1'
+            valor ===
+            '1'
         ) {
             usuario.estilo =
                 'Direto';
 
         } else if (
-            valor === '2'
+            valor ===
+            '2'
         ) {
             usuario.estilo =
                 'Detalhado';
 
         } else if (
-            valor === '3'
+            valor ===
+            '3'
         ) {
             usuario.estilo =
                 'Descontraído';
@@ -2009,7 +2575,8 @@ async function processarConfiguracao(
         'nomeBot'
     ) {
         if (
-            valor.length < 2
+            valor.length <
+            2
         ) {
             await sock.sendMessage(
                 chatJid,
@@ -2219,7 +2786,7 @@ async function comandoViral(
             {
                 text:
                     `🎵 *Como usar /viral*\n\n` +
-                    `/viral nome da música\n` +
+                    `/viral nome da música\n\n` +
                     `ou\n\n` +
                     `/viral https://link...`
             }
@@ -2251,7 +2818,9 @@ async function comandoViral(
         );
 
         if (
-            !isUrl(termo)
+            !isUrl(
+                termo
+            )
         ) {
             const resultado =
                 await procurarVideo(
@@ -2326,7 +2895,9 @@ async function comandoAudio(
 ) {
     if (
         termo &&
-        isUrl(termo)
+        isUrl(
+            termo
+        )
     ) {
         const pasta =
             await criarTempDir(
@@ -2580,7 +3151,7 @@ async function processarSaudacao(
 }
 
 // ======================================================
-// PROCESSAR UMA MENSAGEM
+// PROCESSAR MENSAGEM
 // ======================================================
 
 async function processarMensagem(
@@ -2651,7 +3222,9 @@ async function processarMensagem(
         );
 
     const textoNormalizado =
-        textoSeguro(texto);
+        textoSeguro(
+            texto
+        );
 
     const textoMinusculo =
         textoNormalizado
@@ -2697,7 +3270,7 @@ async function processarMensagem(
     }
 
     // ==================================================
-    // /CMD /SOS
+    // CMD
     // ==================================================
 
     if (
@@ -2715,7 +3288,7 @@ async function processarMensagem(
     }
 
     // ==================================================
-    // /CONFIG
+    // CONFIG
     // ==================================================
 
     if (
@@ -2731,7 +3304,7 @@ async function processarMensagem(
     }
 
     // ==================================================
-    // /PERFIL
+    // PERFIL
     // ==================================================
 
     if (
@@ -2747,7 +3320,7 @@ async function processarMensagem(
     }
 
     // ==================================================
-    // /S
+    // STICKER
     // ==================================================
 
     if (
@@ -2784,7 +3357,7 @@ async function processarMensagem(
     }
 
     // ==================================================
-    // /VIRAL
+    // VIRAL
     // ==================================================
 
     if (
@@ -2812,7 +3385,7 @@ async function processarMensagem(
     }
 
     // ==================================================
-    // /AUDIO
+    // AUDIO
     // ==================================================
 
     if (
@@ -2841,7 +3414,7 @@ async function processarMensagem(
     }
 
     // ==================================================
-    // SAUDAÇÕES
+    // SAUDAÇÃO
     // ==================================================
 
     if (
@@ -2950,7 +3523,8 @@ async function processarMensagem(
 
             groqBloqueadoAte =
                 Date.now() +
-                segundos * 1000;
+                segundos *
+                    1000;
 
             await sock.sendMessage(
                 chatJid,
@@ -2978,22 +3552,7 @@ async function processarMensagem(
                 {
                     text:
                         `❌ A chave da Groq foi recusada.\n\n` +
-                        `Verifique a GROQ_API_KEY nas variáveis de ambiente.`
-                }
-            );
-
-            return;
-        }
-
-        if (
-            status === 400
-        ) {
-            await sock.sendMessage(
-                chatJid,
-                {
-                    text:
-                        `❌ A solicitação enviada para a Groq foi rejeitada.\n\n` +
-                        `Tente mandar a mensagem novamente.`
+                        `Verifique a GROQ_API_KEY.`
                 }
             );
 
@@ -3012,7 +3571,7 @@ async function processarMensagem(
 }
 
 // ======================================================
-// FILA DE MENSAGENS
+// FILA
 // ======================================================
 
 function adicionarNaFila(
@@ -3073,7 +3632,8 @@ async function iniciarBot() {
 
         const sock =
             makeWASocket({
-                auth: state,
+                auth:
+                    state,
 
                 logger,
 
@@ -3084,8 +3644,11 @@ async function iniciarBot() {
                     false
             });
 
+        socketAtual =
+            sock;
+
         // ==================================================
-        // INTERCEPTAR ENVIO
+        // ENVIO
         // ==================================================
 
         const sendMessageOriginal =
@@ -3139,7 +3702,7 @@ async function iniciarBot() {
 
                                 } catch (erro) {
                                     console.error(
-                                        '❌ Erro ao salvar credenciais no Supabase:',
+                                        '❌ Erro ao salvar credenciais:',
                                         erro?.message ||
                                         erro
                                     );
@@ -3173,7 +3736,8 @@ async function iniciarBot() {
                     qrcode.generate(
                         qr,
                         {
-                            small: true
+                            small:
+                                true
                         }
                     );
                 }
@@ -3232,6 +3796,10 @@ async function iniciarBot() {
                     );
 
                     console.log(
+                        '🎵 yt-dlp: Node + EJS'
+                    );
+
+                    console.log(
                         '=========================================='
                     );
 
@@ -3244,6 +3812,14 @@ async function iniciarBot() {
                 ) {
                     botConectado =
                         false;
+
+                    if (
+                        socketAtual ===
+                        sock
+                    ) {
+                        socketAtual =
+                            null;
+                    }
 
                     const statusCode =
                         new Boom(
@@ -3276,11 +3852,7 @@ async function iniciarBot() {
                         );
 
                         console.log(
-                            '⚠️ A sessão do Supabase continua armazenada.'
-                        );
-
-                        console.log(
-                            'Para vincular outro WhatsApp, será necessário limpar a sessão da tabela.'
+                            '⚠️ Não apagando a sessão do Supabase.'
                         );
 
                         return;
@@ -3293,15 +3865,21 @@ async function iniciarBot() {
                             true;
 
                         console.log(
-                            '🔄 Reconectando em 3 segundos...'
+                            '🔄 Reconectando em 10 segundos...'
                         );
 
                         await esperar(
-                            3000
+                            10000
                         );
 
                         reconexaoAgendada =
                             false;
+
+                        if (
+                            botConectado
+                        ) {
+                            return;
+                        }
 
                         iniciarBot()
                             .catch(
@@ -3416,7 +3994,11 @@ console.log(
 
 console.log('');
 
-iniciarBot()
+verificarYoutubeDL()
+    .then(
+        () =>
+            iniciarBot()
+    )
     .catch(
         erro => {
             console.error(
@@ -3424,6 +4006,8 @@ iniciarBot()
                 erro
             );
 
-            process.exit(1);
+            process.exit(
+                1
+            );
         }
     );
