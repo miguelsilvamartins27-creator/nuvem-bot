@@ -23,14 +23,13 @@ import os from 'os';
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import {
     textoSeguro,
     limitarTexto,
     isUrl,
-    urlPublicaSegura,
     identificarPlataforma,
     obterStatusErro,
     mensagemErroViral
@@ -66,6 +65,39 @@ import {
 import {
     analisarMensagem
 } from './lib/filtros.js';
+
+import {
+    classificarErroViral,
+    mensagemFalhaCandidatos
+} from './lib/viral/erros.js';
+
+import {
+    interpretarEntrada
+} from './lib/viral/entrada.js';
+
+import {
+    selecionarCandidatos
+} from './lib/viral/candidatos.js';
+
+import {
+    validarUrlViral
+} from './lib/viral/urls.js';
+
+import {
+    validarArquivoAudio,
+    nomeSeguroAudio,
+    limparArquivosPasta
+} from './lib/viral/midia.js';
+
+import {
+    criarControleDownload,
+    criarDeduplicador
+} from './lib/viral/controle.js';
+
+import {
+    baixarComPolitica,
+    processarCandidatos
+} from './lib/viral/pipeline.js';
 
 // ======================================================
 // EXEC FILE
@@ -449,8 +481,10 @@ let refeicoes =
 const mensagensDoBot =
     new Set();
 
-const mensagensProcessadas =
-    new Set();
+const deduplicadorMensagens =
+    criarDeduplicador(
+        1000
+    );
 
 let filaProcessamento =
     Promise.resolve();
@@ -480,14 +514,8 @@ let ytdlpDisponivel =
 const cooldownsViral =
     new Map();
 
-const downloadsAtivos =
-    new Set();
-
-const rateLimits =
-    new Map();
-
-let downloadEmAndamento =
-    false;
+const controleDownload =
+    criarControleDownload();
 
 // ======================================================
 // CONSTANTES
@@ -510,6 +538,21 @@ const MAX_FILESIZE_MB =
 
 const MAX_TENTATIVAS_DOWNLOAD =
     2;
+
+const MAX_CANDIDATOS_BUSCA =
+    8;
+
+const MAX_CANDIDATOS_TENTATIVA =
+    3;
+
+const ORCAMENTO_VIRAL_MS =
+    240000;
+
+const AUDIO_QUALIDADE =
+    '192K';
+
+const AUDIO_QUALIDADE_REDUZIDA =
+    '64K';
 
 // ======================================================
 // SERVIDOR
@@ -2085,6 +2128,93 @@ async function comandoFoto(
 // YT-DLP
 // ======================================================
 
+function finalizarProcessoYtdlp(
+    processo
+) {
+    if (
+        !processo ||
+        processo.exitCode !==
+            null ||
+        processo.signalCode !==
+            null
+    ) {
+        return;
+    }
+
+    if (
+        process.platform !==
+            'win32' &&
+        processo.pid
+    ) {
+        try {
+            process.kill(
+                -processo.pid,
+                'SIGKILL'
+            );
+
+            return;
+        } catch {}
+    }
+
+    try {
+        processo.kill(
+            'SIGKILL'
+        );
+    } catch {}
+}
+
+function montarErroYtdlp(
+    {
+        codigo,
+        sinal,
+        stdout,
+        stderr,
+        estourou
+    }
+) {
+    const linhasErro =
+        String(stderr || '')
+            .split('\n')
+            .map(linha =>
+                linha.trim()
+            )
+            .filter(linha =>
+                /^ERROR:/i.test(
+                    linha
+                )
+            );
+
+    const detalhe =
+        linhasErro.length
+            ? linhasErro[
+                linhasErro.length -
+                1
+            ]
+            : `O yt-dlp terminou com código ${codigo ?? 'desconhecido'}.`;
+
+    const erro =
+        new Error(
+            detalhe
+        );
+
+    erro.code =
+        codigo ?? null;
+
+    erro.signal =
+        sinal ?? null;
+
+    erro.stdout =
+        stdout || '';
+
+    erro.stderr =
+        stderr || '';
+
+    erro.timeoutViral =
+        estourou === true;
+
+    return erro;
+}
+
 async function executarYoutubeDL(
     url,
     opcoes = {},
@@ -2241,124 +2371,240 @@ async function executarYoutubeDL(
         argumentos.join(' ')
     );
 
-    try {
-        const resultado =
-            await execFileAsync(
-                binario,
-                argumentos,
-                {
-                    timeout,
+    return await new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+            const processo =
+                spawn(
+                    binario,
+                    argumentos,
+                    {
+                        windowsHide:
+                            true,
 
-                    killSignal:
-                        'SIGKILL',
+                        detached:
+                            process.platform !==
+                            'win32'
+                    }
+                );
 
-                    windowsHide:
-                        true,
+            const limiteSaida =
+                10 *
+                1024 *
+                1024;
 
-                    maxBuffer:
-                        20 * 1024 * 1024,
+            let stdout = '';
+            let stderr = '';
+            let estourou = false;
+            let finalizado = false;
 
-                    encoding:
-                        'utf8'
+            const timer =
+                setTimeout(
+                    () => {
+                        estourou =
+                            true;
+
+                        finalizarProcessoYtdlp(
+                            processo
+                        );
+                    },
+                    timeout
+                );
+
+            const encerrar =
+                (
+                    fn,
+                    valor
+                ) => {
+                    if (
+                        finalizado
+                    ) {
+                        return;
+                    }
+
+                    finalizado =
+                        true;
+
+                    clearTimeout(
+                        timer
+                    );
+
+                    fn(valor);
+                };
+
+            processo.stdout.on(
+                'data',
+                dado => {
+                    if (
+                        stdout.length <
+                        limiteSaida
+                    ) {
+                        stdout +=
+                            dado.toString(
+                                'utf8'
+                            );
+                    }
                 }
             );
 
-        const stdout =
-            resultado?.stdout ||
-            '';
+            processo.stderr.on(
+                'data',
+                dado => {
+                    if (
+                        stderr.length <
+                        limiteSaida
+                    ) {
+                        stderr +=
+                            dado.toString(
+                                'utf8'
+                            );
+                    }
+                }
+            );
 
-        const stderr =
-            resultado?.stderr ||
-            '';
+            processo.on(
+                'error',
+                erro => {
+                    erro.timeoutViral =
+                        estourou ===
+                        true;
 
-        if (
-            stderr.trim()
-        ) {
-            console.log(
-                'ℹ️ yt-dlp stderr:',
-                stderr.trim()
+                    encerrar(
+                        reject,
+                        erro
+                    );
+                }
+            );
+
+            processo.on(
+                'close',
+                (
+                    codigo,
+                    sinal
+                ) => {
+                    if (
+                        estourou ||
+                        sinal ===
+                            'SIGKILL'
+                    ) {
+                        console.error('');
+                        console.error(
+                            '❌ YT-DLP FALHOU (timeout)'
+                        );
+
+                        encerrar(
+                            reject,
+                            montarErroYtdlp(
+                                {
+                                    codigo,
+                                    sinal,
+                                    stdout,
+                                    stderr,
+
+                                    estourou:
+                                        true
+                                }
+                            )
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        codigo !==
+                        0
+                    ) {
+                        console.error('');
+                        console.error(
+                            '❌ YT-DLP FALHOU'
+                        );
+
+                        console.error(
+                            `Código: ${codigo ?? 'desconhecido'}`
+                        );
+
+                        if (
+                            stdout.trim()
+                        ) {
+                            console.error(
+                                'stdout:',
+                                stdout.trim()
+                            );
+                        }
+
+                        if (
+                            stderr.trim()
+                        ) {
+                            console.error(
+                                'stderr:',
+                                stderr.trim()
+                            );
+                        }
+
+                        encerrar(
+                            reject,
+                            montarErroYtdlp(
+                                {
+                                    codigo,
+                                    sinal,
+                                    stdout,
+                                    stderr,
+
+                                    estourou:
+                                        false
+                                }
+                            )
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        stderr.trim()
+                    ) {
+                        console.log(
+                            'ℹ️ yt-dlp stderr:',
+                            stderr.trim()
+                        );
+                    }
+
+                    if (
+                        opcoes.dumpSingleJson
+                    ) {
+                        try {
+                            encerrar(
+                                resolve,
+                                JSON.parse(
+                                    stdout
+                                )
+                            );
+                        } catch (erroJson) {
+                            console.error(
+                                '❌ Saída do yt-dlp:',
+                                stdout
+                            );
+
+                            encerrar(
+                                reject,
+                                new Error(
+                                    'O yt-dlp terminou, mas não retornou um JSON válido.'
+                                )
+                            );
+                        }
+
+                        return;
+                    }
+
+                    encerrar(
+                        resolve,
+                        stdout
+                    );
+                }
             );
         }
-
-        // ==================================================
-        // JSON
-        // ==================================================
-
-        if (
-            opcoes.dumpSingleJson
-        ) {
-            try {
-                return JSON.parse(
-                    stdout
-                );
-            } catch (erroJson) {
-                console.error(
-                    '❌ Saída do yt-dlp:',
-                    stdout
-                );
-
-                throw new Error(
-                    'O yt-dlp terminou, mas não retornou um JSON válido.'
-                );
-            }
-        }
-
-        return stdout;
-
-    } catch (erro) {
-        const stdout =
-            erro?.stdout ||
-            '';
-
-        const stderr =
-            erro?.stderr ||
-            '';
-
-        console.error('');
-        console.error(
-            '❌ YT-DLP FALHOU'
-        );
-
-        console.error(
-            `Código: ${erro?.code ?? 'desconhecido'}`
-        );
-
-        if (
-            stdout.trim()
-        ) {
-            console.error(
-                'stdout:',
-                stdout.trim()
-            );
-        }
-
-        if (
-            stderr.trim()
-        ) {
-            console.error(
-                'stderr:',
-                stderr.trim()
-            );
-        }
-
-        if (
-            erro?.killed ||
-            erro?.signal ===
-                'SIGKILL'
-        ) {
-            const timeoutErro =
-                new Error(
-                    'O yt-dlp excedeu o tempo limite.'
-                );
-
-            timeoutErro.cause =
-                erro;
-
-            throw timeoutErro;
-        }
-
-        throw erro;
-    }
+    );
 }
 
 // ======================================================
@@ -2427,19 +2673,20 @@ async function verificarYoutubeDL() {
 }
 
 // ======================================================
-// PROCURAR VÍDEO
+// PESQUISAR CANDIDATOS
 // ======================================================
 
-async function procurarVideo(
-    termo
+async function pesquisarCandidatos(
+    termo,
+    { limite = MAX_CANDIDATOS_BUSCA } = {}
 ) {
     console.log(
         `🔎 Pesquisa: ${termo}`
     );
 
-    const resultado =
+    const json =
         await executarYoutubeDL(
-            `ytsearch1:${termo}`,
+            `ytsearch${limite}:${termo}`,
             {
                 dumpSingleJson:
                     true,
@@ -2450,14 +2697,11 @@ async function procurarVideo(
                 noWarnings:
                     true,
 
-                noCheckCertificates:
-                    true,
-
                 skipDownload:
                     true,
 
                 playlistEnd:
-                    1,
+                    limite,
 
                 noPlaylist:
                     true
@@ -2465,42 +2709,23 @@ async function procurarVideo(
             TIMEOUT_BUSCA_MS
         );
 
-    const video =
-        resultado
-            ?.entries?.[0];
+    const { candidatos } =
+        selecionarCandidatos(
+            json,
+            termo,
+            { limite }
+        );
 
-    if (!video) {
-        throw new Error(
-            'Nenhum resultado encontrado.'
+    for (
+        const candidato
+        of candidatos
+    ) {
+        console.log(
+            `🎯 Candidato (${candidato.pontuacao}): ${candidato.titulo}`
         );
     }
 
-    const url =
-        video.webpage_url ||
-        video.original_url ||
-        (
-            video.id
-                ? `https://www.youtube.com/watch?v=${video.id}`
-                : null
-        );
-
-    if (!url) {
-        throw new Error(
-            'O resultado da pesquisa não possui uma URL válida.'
-        );
-    }
-
-    return {
-        url,
-
-        titulo:
-            video.title ||
-            'Áudio',
-
-        duracao:
-            video.duration ||
-            null
-    };
+    return candidatos;
 }
 
 // ======================================================
@@ -2532,9 +2757,70 @@ async function encontrarArquivoAudio(
         );
     }
 
+    const infos = [];
+
+    for (
+        const nome
+        of candidatos
+    ) {
+        try {
+            const info =
+                await fs.stat(
+                    path.join(
+                        pasta,
+                        nome
+                    )
+                );
+
+            infos.push({
+                nome,
+
+                tamanho:
+                    info.size
+            });
+        } catch {}
+    }
+
+    if (
+        !infos.length
+    ) {
+        throw new Error(
+            'O download terminou, mas nenhum arquivo de áudio foi encontrado.'
+        );
+    }
+
+    infos.sort(
+        (a, b) => {
+            const aMp3 =
+                /\.mp3$/i.test(
+                    a.nome
+                )
+                    ? 1
+                    : 0;
+
+            const bMp3 =
+                /\.mp3$/i.test(
+                    b.nome
+                )
+                    ? 1
+                    : 0;
+
+            if (
+                aMp3 !==
+                bMp3
+            ) {
+                return bMp3 -
+                    aMp3;
+            }
+
+            return b.tamanho -
+                a.tamanho;
+        }
+    );
+
     return path.join(
         pasta,
-        candidatos[0]
+        infos[0].nome
     );
 }
 
@@ -2544,10 +2830,15 @@ async function encontrarArquivoAudio(
 
 async function baixarAudio(
     url,
-    pasta
+    pasta,
+    {
+        qualidade = AUDIO_QUALIDADE,
+
+        timeout = TIMEOUT_DOWNLOAD_MS
+    } = {}
 ) {
     console.log(
-        `⬇️ Baixando: ${url}`
+        `⬇️ Baixando: ${url} (áudio ${qualidade})`
     );
 
     await executarYoutubeDL(
@@ -2560,7 +2851,13 @@ async function baixarAudio(
                 'mp3',
 
             audioQuality:
-                '192K',
+                qualidade,
+
+            extractorRetries:
+                2,
+
+            fragmentRetries:
+                2,
 
             maxFilesize:
                 `${MAX_FILESIZE_MB}M`,
@@ -2574,16 +2871,13 @@ async function baixarAudio(
             noWarnings:
                 true,
 
-            noCheckCertificates:
-                true,
-
             noPlaylist:
                 true,
 
             ffmpegLocation:
                 ffmpegPath
         },
-        TIMEOUT_DOWNLOAD_MS
+        timeout
     );
 
     const arquivo =
@@ -2645,18 +2939,9 @@ async function enviarAudio(
     }
 
     const nomeSeguro =
-        titulo
-            ? String(titulo)
-                .replace(
-                    /[^\p{L}\p{N}\s._-]/gu,
-                    ''
-                )
-                .trim()
-                .slice(
-                    0,
-                    80
-                ) || 'audio'
-            : null;
+        nomeSeguroAudio(
+            titulo
+        );
 
     await sock.sendMessage(
         chatJid,
@@ -3994,111 +4279,94 @@ function verificarCooldown(
 }
 
 // ======================================================
-// BAIXAR COM RETRY
+// BAIXAR COM POLÍTICA DE ERRO
 // ======================================================
 
-async function baixarAudioComRetry(
+async function baixarAudioComPolitica(
     url,
-    pasta
+    pasta,
+    { deadline = null } = {}
 ) {
-    let ultimoErro;
+    return await baixarComPolitica(
+        {
+            tentarBaixar:
+                async (
+                    {
+                        qualidadeReduzida,
 
-    for (
-        let tentativa = 1;
-        tentativa <=
-        MAX_TENTATIVAS_DOWNLOAD;
-        tentativa++
-    ) {
-        try {
-            console.log(
-                `📥 Tentativa ${tentativa}/${MAX_TENTATIVAS_DOWNLOAD}`
-            );
+                        restanteMs
+                    }
+                ) => {
+                    const timeout =
+                        Math.max(
+                            10000,
 
-            return await baixarAudio(
-                url,
-                pasta
-            );
+                            Math.min(
+                                TIMEOUT_DOWNLOAD_MS,
+                                restanteMs
+                            )
+                        );
 
-        } catch (erro) {
-            ultimoErro =
-                erro;
-
-            const mensagem =
-                String(
-                    erro?.stderr ||
-                    erro?.message ||
-                    ''
-                ).toLowerCase();
-
-            const httpCode =
-                erro?.stderr?.match(
-                    /http error (\d+)/i
-                )?.[1];
-
-            if (
-                httpCode ===
-                '403'
-            ) {
-                console.log(
-                    '🚫 Erro 403 - não retentando'
-                );
-
-                throw erro;
-            }
-
-            if (
-                httpCode ===
-                    '429' ||
-                mensagem.includes(
-                    'too many requests'
-                )
-            ) {
-                if (
-                    tentativa <
-                    MAX_TENTATIVAS_DOWNLOAD
-                ) {
-                    const espera =
-                        Math.pow(
-                            2,
-                            tentativa
-                        ) * 3000;
-
-                    console.log(
-                        `⏳ Rate limit. Aguardando ${espera / 1000}s...`
+                    await limparArquivosPasta(
+                        pasta
                     );
 
-                    await esperar(
-                        espera
+                    return await baixarAudio(
+                        url,
+                        pasta,
+                        {
+                            qualidade:
+                                qualidadeReduzida
+                                    ? AUDIO_QUALIDADE_REDUZIDA
+                                    : AUDIO_QUALIDADE,
+
+                            timeout
+                        }
                     );
+                },
 
-                    continue;
-                }
-            }
+            classificar:
+                erro =>
+                    classificarErroViral(
+                        erro,
+                        {
+                            etapa:
+                                'download'
+                        }
+                    ),
 
-            if (
-                tentativa <
+            esperar,
+
+            agora:
+                () =>
+                    Date.now(),
+
+            deadline,
+
+            maxTentativas:
                 MAX_TENTATIVAS_DOWNLOAD
-            ) {
-                const espera =
-                    2000 *
-                    tentativa;
-
-                console.log(
-                    `⚠️ Tentativa falhou. Aguardando ${espera / 1000}s...`
-                );
-
-                await esperar(
-                    espera
-                );
-
-                continue;
-            }
-
-            throw erro;
         }
+    );
+}
+
+function textoLinkRecusado(
+    motivo
+) {
+    if (
+        motivo ===
+        'dns'
+    ) {
+        return (
+            '🌐 *Falha de rede*\n\n' +
+            'Não consegui resolver o endereço desse link.\n\n' +
+            'Verifique o link e tente novamente.'
+        );
     }
 
-    throw ultimoErro;
+    return (
+        '🚫 *Link não permitido*\n\n' +
+        'Use apenas links públicos http/https da internet.'
+    );
 }
 
 // ======================================================
@@ -4110,14 +4378,22 @@ async function comandoViral(
     chatJid,
     termo
 ) {
-    if (!termo) {
+    const entrada =
+        interpretarEntrada(
+            termo
+        );
+
+    if (
+        entrada.tipo ===
+        'vazio'
+    ) {
         await sock.sendMessage(
             chatJid,
             {
                 text:
                     `🎵 *Como usar /viral*\n\n` +
-                    `/viral nome da música\n\n` +
-                    `ou\n\n` +
+                    `/viral nome da música\n` +
+                    `/viral artista + nome da música\n` +
                     `/viral https://link...\n\n` +
                     `⏱️ Limite: 1 download a cada ${COOLDOWN_VIRAL_MS / 1000}s\n` +
                     `📦 Tamanho máximo: ${MAX_FILESIZE_MB}MB`
@@ -4126,11 +4402,6 @@ async function comandoViral(
 
         return;
     }
-
-    const ehUrl =
-        isUrl(
-            termo
-        );
 
     if (!ytdlpDisponivel) {
         await sock.sendMessage(
@@ -4147,21 +4418,53 @@ async function comandoViral(
     }
 
     if (
-        ehUrl &&
-        !urlPublicaSegura(
-            termo
-        )
+        entrada.tipo ===
+        'url-invalida'
     ) {
         await sock.sendMessage(
             chatJid,
             {
                 text:
-                    '🚫 *Link não permitido*\n\n' +
-                    'Use apenas links públicos da internet.'
+                    '⚠️ *Link inválido*\n\n' +
+                    'Esse texto parece um link, mas não é um endereço http/https válido.\n\n' +
+                    'Exemplos aceitos: https://youtube.com/watch?v=...\n\n' +
+                    '💡 Se era o nome de uma música, remova os símbolos estranhos e tente de novo.'
             }
         );
 
         return;
+    }
+
+    let plataforma =
+        null;
+
+    if (
+        entrada.tipo ===
+        'url'
+    ) {
+        plataforma =
+            identificarPlataforma(
+                entrada.valor
+            );
+
+        const validacao =
+            await validarUrlViral(
+                entrada.valor
+            );
+
+        if (!validacao.ok) {
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        textoLinkRecusado(
+                            validacao.motivo
+                        )
+                }
+            );
+
+            return;
+        }
     }
 
     const cooldown =
@@ -4185,7 +4488,9 @@ async function comandoViral(
     }
 
     if (
-        downloadEmAndamento
+        !controleDownload.tentarIniciar(
+            chatJid
+        )
     ) {
         await sock.sendMessage(
             chatJid,
@@ -4199,82 +4504,312 @@ async function comandoViral(
         return;
     }
 
-    downloadEmAndamento =
-        true;
-
     const pasta =
         await criarTempDir(
             'viral-'
         );
 
+    const inicio =
+        Date.now();
+
+    const deadline =
+        inicio +
+        ORCAMENTO_VIRAL_MS;
+
+    const idOperacao =
+        `viral-${inicio.toString(36)}`;
+
     try {
-        let url =
-            termo;
-
-        let titulo =
-            null;
-
-        const plataforma =
-            ehUrl
-                ? identificarPlataforma(
-                    termo
-                )
-                : null;
-
-        await sock.sendMessage(
-            chatJid,
-            {
-                text:
-                    ehUrl
-                        ? `🔗 Link recebido${plataforma && plataforma !== 'Outra' ? ` (${plataforma})` : ''}. Baixando áudio...`
-                        : '🔎 Procurando a música...'
-            }
-        );
+        let candidatos = [];
+        let ehBusca = false;
 
         if (
-            !ehUrl
+            entrada.tipo ===
+            'url'
         ) {
-            const resultado =
-                await procurarVideo(
-                    termo
+            // Revalidação anti-rebinding: roda imediatamente antes do
+            // download. O yt-dlp re-resolve o host e segue redirecionamentos
+            // por conta própria; esta checagem reduz a janela entre a
+            // validação e o uso efetivo do link.
+            const revalidacao =
+                await validarUrlViral(
+                    entrada.valor
                 );
 
-            url =
-                resultado.url;
+            if (!revalidacao.ok) {
+                await sock.sendMessage(
+                    chatJid,
+                    {
+                        text:
+                            textoLinkRecusado(
+                                revalidacao.motivo
+                            )
+                    }
+                );
 
-            titulo =
-                resultado.titulo;
+                return;
+            }
 
             await sock.sendMessage(
                 chatJid,
                 {
                     text:
-                        `🎵 Encontrei: *${limitarTexto(titulo, 150)}*\n\n` +
-                        `⬇️ Baixando o áudio...`
+                        `🔗 Link recebido${plataforma && plataforma !== 'Outra' ? ` (${plataforma})` : ''}. Baixando áudio...`
+                }
+            );
+
+            candidatos = [
+                {
+                    url:
+                        entrada.valor,
+
+                    titulo:
+                        null,
+
+                    canal:
+                        null,
+
+                    duracao:
+                        null
+                }
+            ];
+        } else {
+            ehBusca =
+                true;
+
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        '🔎 Procurando a melhor correspondência...'
+                }
+            );
+
+            try {
+                candidatos =
+                    await pesquisarCandidatos(
+                        entrada.valor
+                    );
+            } catch (erroBusca) {
+                console.error(
+                    `❌ ${idOperacao}: falha na busca:`,
+                    erroBusca?.message ||
+                    erroBusca
+                );
+
+                await sock.sendMessage(
+                    chatJid,
+                    {
+                        text:
+                            mensagemErroViral(
+                                erroBusca
+                            )
+                    }
+                );
+
+                return;
+            }
+
+            if (
+                !candidatos.length
+            ) {
+                await sock.sendMessage(
+                    chatJid,
+                    {
+                        text:
+                            '❌ *Nenhum resultado encontrado*\n\n' +
+                            'Não encontrei um candidato adequado para esse termo.\n\n' +
+                            '💡 Tente um termo mais específico (artista + nome da música).'
+                    }
+                );
+
+                return;
+            }
+
+            const primeiro =
+                candidatos[0];
+
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        `🎵 Encontrei: *${limitarTexto(primeiro.titulo, 150)}*` +
+                        `${primeiro.canal ? `\n👤 ${limitarTexto(primeiro.canal, 80)}` : ''}` +
+                        `\n\n⬇️ Baixando o áudio...`
                 }
             );
         }
 
-        const arquivo =
-            await baixarAudioComRetry(
-                url,
-                pasta
-            );
-
-        await enviarAudio(
-            sock,
-            chatJid,
-            arquivo,
-            titulo
+        console.log(
+            `🧠 ${idOperacao}: ${candidatos.length} candidato(s) para avaliar`
         );
 
+        const resultado =
+            await processarCandidatos(
+                {
+                    candidatos,
+
+                    maxCandidatos:
+                        ehBusca
+                            ? MAX_CANDIDATOS_TENTATIVA
+                            : 1,
+
+                    deadline,
+
+                    agora:
+                        () =>
+                            Date.now(),
+
+                    tentarCandidato:
+                        async candidato => {
+                            const arquivo =
+                                await baixarAudioComPolitica(
+                                    candidato.url,
+                                    pasta,
+                                    {
+                                        deadline
+                                    }
+                                );
+
+                            const validado =
+                                await validarArquivoAudio(
+                                    arquivo,
+                                    {
+                                        maxBytes:
+                                            MAX_TAMANHO_AUDIO
+                                    }
+                                );
+
+                            if (
+                                !validado.ok
+                            ) {
+                                const erroValidacao =
+                                    new Error(
+                                        `Arquivo de áudio inválido (${validado.motivo}).`
+                                    );
+
+                                erroValidacao.classificacaoViral =
+                                    classificarErroViral(
+                                        erroValidacao,
+                                        {
+                                            etapa:
+                                                'validacao'
+                                        }
+                                    );
+
+                                throw erroValidacao;
+                            }
+
+                            return {
+                                arquivo,
+
+                                validado
+                            };
+                        },
+
+                    aoTrocar:
+                        async classificacao => {
+                            console.log(
+                                `⚠️ ${idOperacao}: candidato indisponível (${classificacao.categoria}); tentando o próximo.`
+                            );
+
+                            await sock.sendMessage(
+                                chatJid,
+                                {
+                                    text:
+                                        `⚠️ Essa correspondência não está acessível (${classificacao.rotulo}).\n\n` +
+                                        `🔄 Tentando outra...`
+                                }
+                            );
+                        }
+                }
+            );
+
+        if (!resultado.ok) {
+            console.error(
+                `❌ ${idOperacao}: falhas:`,
+                resultado.falhas
+                    .map(
+                        falha =>
+                            falha.categoria
+                    )
+                    .join(', ')
+            );
+
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        mensagemFalhaCandidatos(
+                            resultado.falhas,
+                            {
+                                plataforma,
+
+                                ehBusca,
+
+                                maxFilesizeMB:
+                                    MAX_FILESIZE_MB
+                            }
+                        )
+                }
+            );
+
+            return;
+        }
+
+        const tituloFinal =
+            resultado
+                .candidato
+                ?.titulo ||
+            null;
+
+        try {
+            await enviarAudio(
+                sock,
+                chatJid,
+                resultado
+                    .resultado
+                    .arquivo,
+                tituloFinal
+            );
+        } catch (erroEnvio) {
+            console.error(
+                `❌ ${idOperacao}: falha no envio:`,
+                erroEnvio?.message ||
+                erroEnvio
+            );
+
+            erroEnvio.categoriaViral =
+                'envio';
+
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        mensagemErroViral(
+                            erroEnvio,
+                            plataforma
+                        )
+                }
+            );
+
+            return;
+        }
+
+        const duracaoS =
+            (
+                (Date.now() -
+                    inicio) /
+                1000
+            ).toFixed(1);
+
         console.log(
-            '✅ /viral concluído.'
+            `✅ ${idOperacao}: concluído em ${duracaoS}s (${ehBusca ? 'busca' : 'link'})`
         );
 
     } catch (erro) {
         console.error(
-            '❌ Erro no /viral:',
+            `❌ ${idOperacao}:`,
             erro?.message ||
             erro
         );
@@ -4285,18 +4820,13 @@ async function comandoViral(
                 text:
                     mensagemErroViral(
                         erro,
-                        ehUrl
-                            ? identificarPlataforma(
-                                termo
-                            )
-                            : null
+                        plataforma
                     )
             }
         );
 
     } finally {
-        downloadEmAndamento =
-            false;
+        controleDownload.finalizar();
 
         await apagarPastaSeguro(
             pasta
@@ -4334,17 +4864,19 @@ async function comandoAudio(
             return;
         }
 
-        if (
-            !urlPublicaSegura(
+        const validacao =
+            await validarUrlViral(
                 termo
-            )
-        ) {
+            );
+
+        if (!validacao.ok) {
             await sock.sendMessage(
                 chatJid,
                 {
                     text:
-                        '🚫 *Link não permitido*\n\n' +
-                        'Use apenas links públicos da internet.'
+                        textoLinkRecusado(
+                            validacao.motivo
+                        )
                 }
             );
 
@@ -4801,17 +5333,15 @@ async function processarMensagem(
         analise.id;
 
     if (
-        mensagensProcessadas.has(
+        deduplicadorMensagens.jaVisto(
             id
         )
     ) {
         return;
     }
 
-    adicionarAoSet(
-        mensagensProcessadas,
-        id,
-        1000
+    deduplicadorMensagens.marcar(
+        id
     );
 
     if (

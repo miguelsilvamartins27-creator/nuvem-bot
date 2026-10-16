@@ -230,14 +230,20 @@ describe('mensagemErroViral', () => {
         assert.match(msg, /Falha de rede/);
     });
 
-    it('mensagem para conteúdo restrito', () => {
+    it('mensagem para verificação anti-bot (não é conteúdo privado)', () => {
         const msg = mensagemErroViral({ message: 'Sign in to confirm you are not a bot' });
+        assert.match(msg, /anti-bot/);
+        assert.doesNotMatch(msg, /Conteúdo restrito/);
+    });
+
+    it('mensagem para conteúdo realmente restrito', () => {
+        const msg = mensagemErroViral({ stderr: 'ERROR: Private video. Sign in if you have been granted access' });
         assert.match(msg, /Conteúdo restrito/);
     });
 
     it('mensagem para vídeo indisponível', () => {
         const msg = mensagemErroViral({ stderr: 'ERROR: Video unavailable' });
-        assert.match(msg, /não está disponível/);
+        assert.match(msg, /indisponível/);
     });
 
     it('mensagem genérica como fallback', () => {
