@@ -99,7 +99,7 @@ import {
     processarCandidatos
 } from './lib/viral/pipeline.js';
 
-import { pesquisarInternetArchive } from './lib/viral/fontes.js';
+import { pesquisarInternetArchive, pesquisarWikimediaCommons } from './lib/viral/fontes.js';
 
 // ======================================================
 // EXEC FILE
@@ -4600,20 +4600,23 @@ async function comandoViral(
                 candidatos = [];
             }
 
-            // Fonte alternativa independente: sempre acrescenta candidatos do
-            // Internet Archive, para que também seja usada se os resultados do
-            // YouTube falharem no download. Apenas itens com licença aberta
-            // verificável entram nessa lista.
-            let candidatosAlternativos = [];
-            try {
-                candidatosAlternativos = await pesquisarInternetArchive(entrada.valor, {
-                    limite: MAX_CANDIDATOS_TENTATIVA
-                });
-            } catch (erroAlternativo) {
-                console.warn(
-                    `⚠️ ${idOperacao}: catálogo alternativo indisponível:`,
-                    erroAlternativo?.message || erroAlternativo
-                );
+            // Consulta dois catálogos independentes em paralelo: assim uma fonte
+            // lenta não soma seu timeout ao da outra. Ambos filtram por licença
+            // reconhecida antes de incluir o áudio como candidato.
+            const resultadosAlternativos = await Promise.allSettled([
+                pesquisarInternetArchive(entrada.valor, { limite: MAX_CANDIDATOS_TENTATIVA }),
+                pesquisarWikimediaCommons(entrada.valor, { limite: MAX_CANDIDATOS_TENTATIVA })
+            ]);
+            const candidatosAlternativos = [];
+            for (const [indiceFonte, resultadoFonte] of resultadosAlternativos.entries()) {
+                if (resultadoFonte.status === 'fulfilled') {
+                    candidatosAlternativos.push(...resultadoFonte.value);
+                } else {
+                    console.warn(
+                        `⚠️ ${idOperacao}: catálogo alternativo ${indiceFonte + 1} indisponível:`,
+                        resultadoFonte.reason?.message || resultadoFonte.reason
+                    );
+                }
             }
 
             // Reserva metade do orçamento para cada fonte: sem isso, os
