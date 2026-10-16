@@ -4600,17 +4600,35 @@ async function comandoViral(
                 candidatos = [];
             }
 
-            // Fonte alternativa independente. Só aceita arquivos cujo catálogo
-            // indique licença aberta/domínio público nos metadados.
-            if (!candidatos.length) {
-                await sock.sendMessage(
-                    chatJid,
-                    { text: '🔁 Busca principal indisponível. Tentando o catálogo alternativo de áudio aberto...' }
-                );
-                candidatos = await pesquisarInternetArchive(entrada.valor, {
+            // Fonte alternativa independente: sempre acrescenta candidatos do
+            // Internet Archive, para que também seja usada se os resultados do
+            // YouTube falharem no download. Apenas itens com licença aberta
+            // verificável entram nessa lista.
+            let candidatosAlternativos = [];
+            try {
+                candidatosAlternativos = await pesquisarInternetArchive(entrada.valor, {
                     limite: MAX_CANDIDATOS_TENTATIVA
                 });
-                ehBusca = true;
+            } catch (erroAlternativo) {
+                console.warn(
+                    `⚠️ ${idOperacao}: catálogo alternativo indisponível:`,
+                    erroAlternativo?.message || erroAlternativo
+                );
+            }
+
+            candidatos = candidatos.map(candidato => ({
+                ...candidato,
+                fonte: candidato.fonte || 'YouTube'
+            }));
+
+            if (candidatosAlternativos.length) {
+                if (!candidatos.length) {
+                    await sock.sendMessage(
+                        chatJid,
+                        { text: '🔁 Busca principal indisponível. Encontrei alternativas no catálogo de áudio aberto...' }
+                    );
+                }
+                candidatos.push(...candidatosAlternativos);
             }
 
             if (!candidatos.length) {
@@ -4651,7 +4669,7 @@ async function comandoViral(
 
                     maxCandidatos:
                         ehBusca
-                            ? MAX_CANDIDATOS_TENTATIVA
+                            ? Math.min(candidatos.length, MAX_CANDIDATOS_TENTATIVA * 2)
                             : 1,
 
                     deadline,
