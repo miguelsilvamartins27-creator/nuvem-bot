@@ -27,6 +27,41 @@ import { createClient } from '@supabase/supabase-js';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
+import {
+    textoSeguro,
+    limitarTexto,
+    isUrl,
+    urlPublicaSegura,
+    identificarPlataforma,
+    obterStatusErro,
+    erroEh429,
+    erroTemporarioGroq,
+    obterTempoRetry,
+    mensagemErroViral
+} from './lib/utilidades.js';
+
+import {
+    sanitizarDescricao,
+    criarRegistro,
+    registrosDoDia,
+    ultimosRegistros,
+    localizarParaExclusao
+} from './lib/registros.js';
+
+import {
+    MODELO_VISAO_PADRAO,
+    LIMITE_IMAGEM_VISAO_MB,
+    decidirImagem,
+    ehComandoFoto,
+    detectarIntencaoRegistro,
+    limparLegendaFoto,
+    deveProcessarFoto,
+    instrucaoSistemaVisao,
+    montarMensagensVisao,
+    extrairRegistroDaAnalise,
+    mensagemErroVisao
+} from './lib/visao.js';
+
 // ======================================================
 // EXEC FILE
 // ======================================================
@@ -76,7 +111,13 @@ const PORT =
 // ======================================================
 
 const MEU_CHAT =
-    '10531511513088@lid';
+    process.env.MY_WHATSAPP_CHAT_ID || '10531511513088@lid';
+
+if (!process.env.MY_WHATSAPP_CHAT_ID) {
+    console.warn(
+        '⚠️ MY_WHATSAPP_CHAT_ID não encontrada no .env. Usando valor padrão.'
+    );
+}
 
 const AUTH_DIRS = [
     './auth_info',
@@ -92,6 +133,18 @@ const ARQUIVO_USUARIO =
         'usuario.json'
     );
 
+const ARQUIVO_TREINOS =
+    path.join(
+        PASTA_DADOS,
+        'treinos.json'
+    );
+
+const ARQUIVO_REFEICOES =
+    path.join(
+        PASTA_DADOS,
+        'refeicoes.json'
+    );
+
 const logger =
     pino({
         level: 'silent'
@@ -103,6 +156,10 @@ const logger =
 
 const MODELO_IA =
     'openai/gpt-oss-120b';
+
+const MODELO_VISAO =
+    process.env.GROQ_VISAO_MODELO ||
+    MODELO_VISAO_PADRAO;
 
 const GROQ_API_KEY =
     process.env.GROQ_API_KEY;
@@ -198,6 +255,12 @@ let usuario = {
 let etapaConfiguracao =
     null;
 
+let treinos =
+    [];
+
+let refeicoes =
+    [];
+
 // ======================================================
 // CONTROLE
 // ======================================================
@@ -226,6 +289,25 @@ let reconexaoAgendada =
 let socketAtual =
     null;
 
+let ytdlpDisponivel =
+    false;
+
+// ======================================================
+// CONTROLE DE DOWNLOAD
+// ======================================================
+
+const cooldownsViral =
+    new Map();
+
+const downloadsAtivos =
+    new Set();
+
+const rateLimits =
+    new Map();
+
+let downloadEmAndamento =
+    false;
+
 // ======================================================
 // CONSTANTES
 // ======================================================
@@ -235,6 +317,21 @@ const MAX_TENTATIVAS_GROQ =
 
 const MAX_TAMANHO_AUDIO =
     30 * 1024 * 1024;
+
+const COOLDOWN_VIRAL_MS =
+    30000;
+
+const TIMEOUT_BUSCA_MS =
+    45000;
+
+const TIMEOUT_DOWNLOAD_MS =
+    60000;
+
+const MAX_FILESIZE_MB =
+    25;
+
+const MAX_TENTATIVAS_DOWNLOAD =
+    2;
 
 // ======================================================
 // SERVIDOR
@@ -315,44 +412,6 @@ function adicionarAoSet(
     }
 }
 
-function textoSeguro(
-    texto
-) {
-    return String(
-        texto || ''
-    )
-        .trim()
-        .replace(
-            /\r/g,
-            ''
-        );
-}
-
-function limitarTexto(
-    texto,
-    limite = 4000
-) {
-    const valor =
-        textoSeguro(
-            texto
-        );
-
-    if (
-        valor.length <=
-        limite
-    ) {
-        return valor;
-    }
-
-    return (
-        valor.slice(
-            0,
-            limite
-        ) +
-        '...'
-    );
-}
-
 async function apagarPastaSeguro(
     pasta
 ) {
@@ -386,16 +445,6 @@ async function criarTempDir(
         path.join(
             os.tmpdir(),
             prefixo
-        )
-    );
-}
-
-function isUrl(
-    texto
-) {
-    return /^https?:\/\/\S+$/i.test(
-        textoSeguro(
-            texto
         )
     );
 }
@@ -496,6 +545,20 @@ function obterImagemMensagem(
     );
 }
 
+function obterAudioMensagem(
+    mensagem
+) {
+    const conteudo =
+        obterMensagemNormalizada(
+            mensagem
+        );
+
+    return (
+        conteudo?.audioMessage ||
+        null
+    );
+}
+
 function obterContextInfo(
     mensagem
 ) {
@@ -560,6 +623,58 @@ function criarMensagemCitataDeVideo(
         message: {
             videoMessage:
                 videoCitado
+        }
+    };
+}
+
+function obterImagemCitada(
+    mensagem
+) {
+    const contextInfo =
+        obterContextInfo(
+            mensagem
+        );
+
+    const quoted =
+        contextInfo?.quotedMessage;
+
+    if (!quoted) {
+        return null;
+    }
+
+    return (
+        quoted?.imageMessage ||
+        null
+    );
+}
+
+function criarMensagemCitadaDeImagem(
+    mensagemOriginal,
+    imagemCitada
+) {
+    const contextInfo =
+        obterContextInfo(
+            mensagemOriginal
+        );
+
+    return {
+        key: {
+            remoteJid:
+                mensagemOriginal
+                    ?.key
+                    ?.remoteJid,
+
+            id:
+                contextInfo
+                    ?.stanzaId,
+
+            fromMe:
+                false
+        },
+
+        message: {
+            imageMessage:
+                imagemCitada
         }
     };
 }
@@ -1024,23 +1139,36 @@ async function prepararAuthState() {
 // ======================================================
 
 async function salvarUsuario() {
-    await fs.mkdir(
-        PASTA_DADOS,
-        {
-            recursive:
-                true
-        }
-    );
+    try {
+        await fs.mkdir(
+            PASTA_DADOS,
+            {
+                recursive:
+                    true
+            }
+        );
 
-    await fs.writeFile(
-        ARQUIVO_USUARIO,
-        JSON.stringify(
-            usuario,
-            null,
-            2
-        ),
-        'utf8'
-    );
+        await fs.writeFile(
+            ARQUIVO_USUARIO,
+            JSON.stringify(
+                usuario,
+                null,
+                2
+            ),
+            'utf8'
+        );
+
+        console.log(
+            '💾 Perfil salvo com sucesso.'
+        );
+    } catch (erro) {
+        console.error(
+            '❌ Erro ao salvar perfil:',
+            erro?.message
+        );
+
+        throw erro;
+    }
 }
 
 async function carregarUsuario() {
@@ -1087,12 +1215,179 @@ async function carregarUsuario() {
             '💾 Perfil carregado.'
         );
 
-    } catch {
-        console.log(
-            'ℹ️ Nenhum perfil encontrado. Criando perfil.'
-        );
+    } catch (erro) {
+        if (erro.code === 'ENOENT') {
+            console.log(
+                'ℹ️ Nenhum perfil encontrado. Criando perfil.'
+            );
+        } else {
+            console.error(
+                '❌ Erro ao carregar perfil:',
+                erro?.message
+            );
+        }
 
         await salvarUsuario();
+    }
+}
+
+// ======================================================
+// TREINOS
+// ======================================================
+
+async function salvarTreinos() {
+    try {
+        await fs.mkdir(
+            PASTA_DADOS,
+            {
+                recursive:
+                    true
+            }
+        );
+
+        await fs.writeFile(
+            ARQUIVO_TREINOS,
+            JSON.stringify(
+                treinos,
+                null,
+                2
+            ),
+            'utf8'
+        );
+
+        console.log(
+            '💾 Treinos salvos.'
+        );
+    } catch (erro) {
+        console.error(
+            '❌ Erro ao salvar treinos:',
+            erro?.message
+        );
+
+        throw erro;
+    }
+}
+
+async function carregarTreinos() {
+    try {
+        await fs.mkdir(
+            PASTA_DADOS,
+            {
+                recursive:
+                    true
+            }
+        );
+
+        const dados =
+            await fs.readFile(
+                ARQUIVO_TREINOS,
+                'utf8'
+            );
+
+        treinos =
+            JSON.parse(
+                dados
+            );
+
+        console.log(
+            `💾 ${treinos.length} treino(s) carregado(s).`
+        );
+
+    } catch (erro) {
+        if (erro.code === 'ENOENT') {
+            console.log(
+                'ℹ️ Nenhum treino encontrado.'
+            );
+
+            treinos = [];
+        } else {
+            console.error(
+                '❌ Erro ao carregar treinos:',
+                erro?.message
+            );
+
+            treinos = [];
+        }
+    }
+}
+
+// ======================================================
+// REFEIÇÕES
+// ======================================================
+
+async function salvarRefeicoes() {
+    try {
+        await fs.mkdir(
+            PASTA_DADOS,
+            {
+                recursive:
+                    true
+            }
+        );
+
+        await fs.writeFile(
+            ARQUIVO_REFEICOES,
+            JSON.stringify(
+                refeicoes,
+                null,
+                2
+            ),
+            'utf8'
+        );
+
+        console.log(
+            '💾 Refeições salvas.'
+        );
+    } catch (erro) {
+        console.error(
+            '❌ Erro ao salvar refeições:',
+            erro?.message
+        );
+
+        throw erro;
+    }
+}
+
+async function carregarRefeicoes() {
+    try {
+        await fs.mkdir(
+            PASTA_DADOS,
+            {
+                recursive:
+                    true
+            }
+        );
+
+        const dados =
+            await fs.readFile(
+                ARQUIVO_REFEICOES,
+                'utf8'
+            );
+
+        refeicoes =
+            JSON.parse(
+                dados
+            );
+
+        console.log(
+            `💾 ${refeicoes.length} refeição(ões) carregada(s).`
+        );
+
+    } catch (erro) {
+        if (erro.code === 'ENOENT') {
+            console.log(
+                'ℹ️ Nenhuma refeição encontrada.'
+            );
+
+            refeicoes = [];
+        } else {
+            console.error(
+                '❌ Erro ao carregar refeições:',
+                erro?.message
+            );
+
+            refeicoes = [];
+        }
     }
 }
 
@@ -1104,126 +1399,6 @@ function limparHistoricoIA() {
 // ======================================================
 // GROQ - ERROS
 // ======================================================
-
-function obterStatusErro(
-    erro
-) {
-    return (
-        erro?.status ||
-        erro?.statusCode ||
-        (
-            Number.isFinite(
-                Number(
-                    erro?.code
-                )
-            )
-                ? Number(
-                    erro.code
-                )
-                : null
-        )
-    );
-}
-
-function erroEh429(
-    erro
-) {
-    const mensagem =
-        String(
-            erro?.message ||
-            erro ||
-            ''
-        ).toLowerCase();
-
-    const status =
-        obterStatusErro(
-            erro
-        );
-
-    return (
-        status === 429 ||
-        mensagem.includes(
-            '429'
-        ) ||
-        mensagem.includes(
-            'rate limit'
-        ) ||
-        mensagem.includes(
-            'too many requests'
-        )
-    );
-}
-
-function erroTemporarioGroq(
-    erro
-) {
-    const mensagem =
-        String(
-            erro?.message ||
-            erro ||
-            ''
-        ).toLowerCase();
-
-    const status =
-        obterStatusErro(
-            erro
-        );
-
-    return (
-        status === 408 ||
-        status === 429 ||
-        status === 500 ||
-        status === 502 ||
-        status === 503 ||
-        status === 504 ||
-        mensagem.includes(
-            'timeout'
-        ) ||
-        mensagem.includes(
-            'overloaded'
-        ) ||
-        mensagem.includes(
-            'temporarily unavailable'
-        )
-    );
-}
-
-function obterTempoRetry(
-    erro
-) {
-    const mensagem =
-        String(
-            erro?.message ||
-            erro ||
-            ''
-        );
-
-    const match =
-        mensagem.match(
-            /retry[- ]after["':\s]+["']?(\d+)/i
-        );
-
-    if (match) {
-        const segundos =
-            Number(
-                match[1]
-            );
-
-        if (
-            Number.isFinite(
-                segundos
-            ) &&
-            segundos > 0
-        ) {
-            return Math.min(
-                segundos,
-                120
-            );
-        }
-    }
-
-    return 10;
-}
 
 // ======================================================
 // IA
@@ -1466,6 +1641,467 @@ function gerarRespostaIA(
 }
 
 // ======================================================
+// GROQ - VISÃO
+// ======================================================
+
+async function reduzirImagemParaVisao(
+    buffer
+) {
+    try {
+        return await sharp(
+            buffer
+        )
+            .rotate()
+            .resize({
+                width:
+                    1600,
+
+                height:
+                    1600,
+
+                fit:
+                    'inside',
+
+                withoutEnlargement:
+                    true
+            })
+            .jpeg({
+                quality:
+                    82
+            })
+            .toBuffer();
+
+    } catch (erro) {
+        console.error(
+            '⚠️ Falha ao reduzir imagem:',
+            erro?.message ||
+            erro
+        );
+
+        return null;
+    }
+}
+
+async function gerarAnaliseVisaoInterna({
+    base64,
+    mimetype,
+    legenda
+}) {
+    const agora =
+        Date.now();
+
+    if (
+        agora <
+        groqBloqueadoAte
+    ) {
+        const segundos =
+            Math.ceil(
+                (
+                    groqBloqueadoAte -
+                    agora
+                ) / 1000
+            );
+
+        return {
+            texto:
+                `⏳ A API do Groq está temporariamente no limite.\n\n` +
+                `Tente novamente em aproximadamente ${segundos}s.`,
+
+            bloqueado:
+                true
+        };
+    }
+
+    const mensagens =
+        montarMensagensVisao({
+            base64,
+
+            mimetype,
+
+            legenda,
+
+            instrucao:
+                instrucaoSistemaVisao({
+                    nomeBot:
+                        usuario.nomeBot ||
+                        'Assistente'
+                })
+        });
+
+    for (
+        let tentativa = 1;
+        tentativa <=
+        MAX_TENTATIVAS_GROQ;
+        tentativa++
+    ) {
+        try {
+            console.log(
+                `👁️ Groq visão ${tentativa}/${MAX_TENTATIVAS_GROQ}`
+            );
+
+            const resposta =
+                await groq
+                    .chat
+                    .completions
+                    .create({
+                        model:
+                            MODELO_VISAO,
+
+                        messages:
+                            mensagens,
+
+                        temperature:
+                            0.4,
+
+                        max_tokens:
+                            1024
+                    });
+
+            const textoResposta =
+                resposta
+                    ?.choices?.[0]
+                    ?.message
+                    ?.content
+                    ?.trim();
+
+            if (
+                !textoResposta
+            ) {
+                throw new Error(
+                    'A Groq não retornou texto.'
+                );
+            }
+
+            return {
+                texto:
+                    textoResposta,
+
+                bloqueado:
+                    false
+            };
+
+        } catch (erro) {
+            console.log(
+                '⚠️ Erro Groq visão:',
+                erro?.message ||
+                erro
+            );
+
+            if (
+                erroEh429(
+                    erro
+                )
+            ) {
+                const segundos =
+                    obterTempoRetry(
+                        erro
+                    );
+
+                groqBloqueadoAte =
+                    Date.now() +
+                    segundos *
+                        1000;
+
+                throw erro;
+            }
+
+            if (
+                tentativa <
+                    MAX_TENTATIVAS_GROQ &&
+                erroTemporarioGroq(
+                    erro
+                )
+            ) {
+                await esperar(
+                    1500 *
+                    Math.pow(
+                        2,
+                        tentativa - 1
+                    )
+                );
+
+                continue;
+            }
+
+            throw erro;
+        }
+    }
+
+    throw new Error(
+        'Não foi possível analisar a foto.'
+    );
+}
+
+async function comandoFoto(
+    sock,
+    chatJid,
+    mensagem,
+    legenda
+) {
+    const imagemDireta =
+        obterImagemMensagem(
+            mensagem
+        );
+
+    const imagemCitada =
+        imagemDireta
+            ? null
+            : obterImagemCitada(
+                mensagem
+            );
+
+    const imagem =
+        imagemDireta ||
+        imagemCitada;
+
+    if (!imagem) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `📸 *Análise de fotos*\n\n` +
+                    `Envie uma foto de comida junto com a mensagem.\n\n` +
+                    `Escreva "registrar" na legenda para salvar como refeição.`
+            }
+        );
+
+        return;
+    }
+
+    const mensagemMidia =
+        imagemDireta
+            ? mensagem
+            : criarMensagemCitadaDeImagem(
+                mensagem,
+                imagemCitada
+            );
+
+    const decisaoDeclarada =
+        decidirImagem(
+            imagem.fileLength
+        );
+
+    if (
+        !decisaoDeclarada.ok
+    ) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `❌ Foto muito grande (${decisaoDeclarada.mb.toFixed(1)}MB). Máximo: ${LIMITE_IMAGEM_VISAO_MB}MB`
+            }
+        );
+
+        return;
+    }
+
+    await sock.sendMessage(
+        chatJid,
+        {
+            text:
+                '🔎 Analisando a foto...'
+        }
+    );
+
+    let buffer;
+
+    try {
+        buffer =
+            await downloadMediaMessage(
+                mensagemMidia,
+                'buffer',
+                {},
+                {
+                    logger,
+
+                    reuploadRequest:
+                        sock.updateMediaMessage
+                }
+            );
+
+    } catch (erro) {
+        console.error(
+            '❌ Erro ao baixar foto:',
+            erro?.message ||
+            erro
+        );
+
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `❌ Não consegui baixar essa foto.\n\n` +
+                    `Tente reenviá-la.`
+            }
+        );
+
+        return;
+    }
+
+    if (!buffer) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `❌ Não consegui baixar essa foto.\n\n` +
+                    `Tente reenviá-la.`
+            }
+        );
+
+        return;
+    }
+
+    const decisaoReal =
+        decidirImagem(
+            buffer.length
+        );
+
+    if (!decisaoReal.ok) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `❌ Foto muito grande (${decisaoReal.mb.toFixed(1)}MB). Máximo: ${LIMITE_IMAGEM_VISAO_MB}MB`
+            }
+        );
+
+        return;
+    }
+
+    let dados =
+        buffer;
+
+    let mimetype =
+        textoSeguro(
+            imagem.mimetype
+        ) ||
+        'image/jpeg';
+
+    if (
+        decisaoReal.reduzir
+    ) {
+        const reduzida =
+            await reduzirImagemParaVisao(
+                buffer
+            );
+
+        if (reduzida) {
+            dados =
+                reduzida;
+
+            mimetype =
+                'image/jpeg';
+        }
+    }
+
+    const legendaLimpa =
+        limparLegendaFoto(
+            legenda
+        );
+
+    const querRegistrar =
+        detectarIntencaoRegistro(
+            legenda
+        );
+
+    const resultadoVisao =
+        await gerarAnaliseVisaoInterna({
+            base64:
+                dados.toString(
+                    'base64'
+                ),
+
+            mimetype,
+
+            legenda:
+                legendaLimpa
+        });
+
+    const {
+        texto:
+            textoVisao,
+
+        bloqueado
+    } = resultadoVisao;
+
+    const {
+        texto:
+            textoAnalise,
+
+        registro
+    } = extrairRegistroDaAnalise(
+        textoVisao
+    );
+
+    let sufixo =
+        '';
+
+    if (
+        querRegistrar &&
+        !bloqueado
+    ) {
+        const descricao =
+            sanitizarDescricao(
+                registro ||
+                textoAnalise
+            );
+
+        if (descricao) {
+            const novoRegistro =
+                criarRegistro(
+                    descricao,
+                    'refeicao'
+                );
+
+            refeicoes.push(
+                novoRegistro
+            );
+
+            try {
+                await salvarRefeicoes();
+
+                console.log(
+                    '✅ Refeição registrada por foto.'
+                );
+
+                sufixo =
+                    `\n\n✅ *Refeição registrada!*\n` +
+                    `📝 ${descricao}`;
+
+            } catch (erro) {
+                refeicoes.pop();
+
+                console.error(
+                    '❌ Erro ao salvar refeição (foto):',
+                    erro?.message ||
+                    erro
+                );
+
+                sufixo =
+                    `\n\n⚠️ Não consegui salvar a refeição. ` +
+                    `Tente novamente.`;
+            }
+        } else {
+            sufixo =
+                `\n\n⚠️ Não consegui montar a descrição para salvar.\n` +
+                `💡 Use /refeicao <descrição>.`;
+        }
+    }
+
+    await sock.sendMessage(
+        chatJid,
+        {
+            text:
+                (
+                    textoAnalise ||
+                    textoVisao
+                ) +
+                sufixo
+        }
+    );
+}
+
+// ======================================================
 // YT-DLP
 // ======================================================
 
@@ -1552,12 +2188,17 @@ async function executarYoutubeDL(
     }
 
     // ==================================================
-    // DIAGNÓSTICO DETALHADO
+    // DIAGNÓSTICO DETALHADO (só em desenvolvimento)
     // ==================================================
 
-    argumentos.push(
-        '--verbose'
-    );
+    if (
+        process.env.NODE_ENV !==
+        'production'
+    ) {
+        argumentos.push(
+            '--verbose'
+        );
+    }
 
     // ==================================================
     // JAVASCRIPT / EJS
@@ -1791,6 +2432,9 @@ async function verificarYoutubeDL() {
             `🟢 Node versão: ${process.version}`
         );
 
+        ytdlpDisponivel =
+            true;
+
     } catch (erro) {
         console.error(
             '❌ Não foi possível verificar o yt-dlp:',
@@ -1838,7 +2482,7 @@ async function procurarVideo(
                 noPlaylist:
                     true
             },
-            90000
+            TIMEOUT_BUSCA_MS
         );
 
     const video =
@@ -1938,6 +2582,9 @@ async function baixarAudio(
             audioQuality:
                 '192K',
 
+            maxFilesize:
+                `${MAX_FILESIZE_MB}M`,
+
             output:
                 path.join(
                     pasta,
@@ -1956,7 +2603,7 @@ async function baixarAudio(
             ffmpegLocation:
                 ffmpegPath
         },
-        180000
+        TIMEOUT_DOWNLOAD_MS
     );
 
     const arquivo =
@@ -1981,6 +2628,28 @@ async function enviarAudio(
     arquivo,
     titulo = null
 ) {
+    let info;
+
+    try {
+        info =
+            await fs.stat(
+                arquivo
+            );
+    } catch {
+        throw new Error(
+            'O arquivo de áudio não foi encontrado.'
+        );
+    }
+
+    if (
+        !info.isFile() ||
+        info.size === 0
+    ) {
+        throw new Error(
+            'O arquivo de áudio está vazio ou inválido.'
+        );
+    }
+
     const audio =
         await fs.readFile(
             arquivo
@@ -1995,6 +2664,20 @@ async function enviarAudio(
         );
     }
 
+    const nomeSeguro =
+        titulo
+            ? String(titulo)
+                .replace(
+                    /[^\p{L}\p{N}\s._-]/gu,
+                    ''
+                )
+                .trim()
+                .slice(
+                    0,
+                    80
+                ) || 'audio'
+            : null;
+
     await sock.sendMessage(
         chatJid,
         {
@@ -2006,10 +2689,10 @@ async function enviarAudio(
             ptt:
                 false,
 
-            ...(titulo
+            ...(nomeSeguro
                 ? {
                     fileName:
-                        `${titulo}.mp3`
+                        `${nomeSeguro}.mp3`
                 }
                 : {})
         }
@@ -2041,40 +2724,81 @@ async function converterVideoParaAudio(
         buffer
     );
 
-    await new Promise(
-        (
-            resolve,
-            reject
-        ) => {
-            ffmpeg(
-                entrada
-            )
-                .noVideo()
-                .audioCodec(
-                    'libmp3lame'
-                )
-                .audioBitrate(
-                    192
-                )
-                .outputOptions(
-                    [
-                        '-vn'
-                    ]
-                )
-                .output(
-                    saida
-                )
-                .on(
-                    'end',
-                    resolve
-                )
-                .on(
-                    'error',
+    await Promise.race(
+        [
+            new Promise(
+                (
+                    resolve,
                     reject
-                )
-                .run();
-        }
+                ) => {
+                    ffmpeg(
+                        entrada
+                    )
+                        .noVideo()
+                        .audioCodec(
+                            'libmp3lame'
+                        )
+                        .audioBitrate(
+                            192
+                        )
+                        .outputOptions(
+                            [
+                                '-vn'
+                            ]
+                        )
+                        .output(
+                            saida
+                        )
+                        .on(
+                            'end',
+                            resolve
+                        )
+                        .on(
+                            'error',
+                            reject
+                        )
+                        .run();
+                }
+            ),
+            new Promise(
+                (
+                    _,
+                    reject
+                ) =>
+                    setTimeout(
+                        () =>
+                            reject(
+                                new Error(
+                                    'FFmpeg timeout ao extrair áudio'
+                                )
+                            ),
+                        30000
+                    )
+            )
+        ]
     );
+
+    let infoSaida;
+
+    try {
+        infoSaida =
+            await fs.stat(
+                saida
+            );
+    } catch {
+        throw new Error(
+            'A conversão terminou, mas o arquivo de áudio não foi gerado.'
+        );
+    }
+
+    if (
+        !infoSaida.isFile() ||
+        infoSaida.size === 0
+    ) {
+        throw new Error(
+            'A conversão gerou um arquivo de áudio vazio.'
+        );
+    }
 
     return saida;
 }
@@ -2144,175 +2868,98 @@ async function criarFigurinhaVideo(
         buffer
     );
 
-    await new Promise(
-        (
-            resolve,
-            reject
-        ) => {
-            ffmpeg(
-                entrada
-            )
-                .duration(
-                    6
-                )
-                .outputOptions(
-                    [
-                        '-vf',
-                        'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=black@0',
-
-                        '-loop',
-                        '0',
-
-                        '-an',
-
-                        '-c:v',
-                        'libwebp',
-
-                        '-q:v',
-                        '60',
-
-                        '-preset',
-                        'default',
-
-                        '-pix_fmt',
-                        'yuva420p'
-                    ]
-                )
-                .output(
-                    saida
-                )
-                .on(
-                    'end',
-                    resolve
-                )
-                .on(
-                    'error',
+    await Promise.race(
+        [
+            new Promise(
+                (
+                    resolve,
                     reject
-                )
-                .run();
-        }
+                ) => {
+                    ffmpeg(
+                        entrada
+                    )
+                        .duration(
+                            6
+                        )
+                        .outputOptions(
+                            [
+                                '-vf',
+                                'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=black@0',
+
+                                '-loop',
+                                '0',
+
+                                '-an',
+
+                                '-c:v',
+                                'libwebp',
+
+                                '-q:v',
+                                '60',
+
+                                '-preset',
+                                'default',
+
+                                '-pix_fmt',
+                                'yuva420p'
+                            ]
+                        )
+                        .output(
+                            saida
+                        )
+                        .on(
+                            'end',
+                            resolve
+                        )
+                        .on(
+                            'error',
+                            reject
+                        )
+                        .run();
+                }
+            ),
+            new Promise(
+                (
+                    _,
+                    reject
+                ) =>
+                    setTimeout(
+                        () =>
+                            reject(
+                                new Error(
+                                    'FFmpeg timeout ao criar figurinha'
+                                )
+                            ),
+                        30000
+                    )
+            )
+        ]
     );
+
+    let infoSaida;
+
+    try {
+        infoSaida =
+            await fs.stat(
+                saida
+            );
+    } catch {
+        throw new Error(
+            'A conversão terminou, mas a figurinha não foi gerada.'
+        );
+    }
+
+    if (
+        !infoSaida.isFile() ||
+        infoSaida.size === 0
+    ) {
+        throw new Error(
+            'A conversão gerou uma figurinha vazia.'
+        );
+    }
 
     return await fs.readFile(
         saida
-    );
-}
-
-// ======================================================
-// ERRO VIRAL
-// ======================================================
-
-function mensagemErroViral(
-    erro
-) {
-    const mensagem =
-        String(
-            erro?.stderr ||
-            erro?.message ||
-            erro ||
-            ''
-        ).toLowerCase();
-
-    if (
-        mensagem.includes(
-            'failed to extract any player response'
-        ) ||
-        mensagem.includes(
-            'javascript'
-        ) ||
-        mensagem.includes(
-            'ejs'
-        ) ||
-        mensagem.includes(
-            'challenge'
-        ) ||
-        mensagem.includes(
-            'player response'
-        )
-    ) {
-        return (
-            '❌ O YouTube não permitiu a extração desse conteúdo.\n\n' +
-            'O downloader está configurado com o runtime JavaScript e EJS atualizado.\n\n' +
-            'Tente outro vídeo ou outro link.'
-        );
-    }
-
-    if (
-        mensagem.includes(
-            'timed out'
-        ) ||
-        mensagem.includes(
-            'timeout'
-        ) ||
-        mensagem.includes(
-            'time limit'
-        )
-    ) {
-        return (
-            '⏱️ O download demorou demais e foi cancelado.\n\n' +
-            'Tente novamente.'
-        );
-    }
-
-    if (
-        mensagem.includes(
-            'nenhum resultado'
-        ) ||
-        mensagem.includes(
-            'no video results'
-        ) ||
-        mensagem.includes(
-            'no results'
-        )
-    ) {
-        return (
-            '❌ Não encontrei esse áudio.\n\n' +
-            'Tente outro nome ou termo.'
-        );
-    }
-
-    if (
-        mensagem.includes(
-            'private'
-        ) ||
-        mensagem.includes(
-            'login required'
-        ) ||
-        mensagem.includes(
-            'sign in'
-        )
-    ) {
-        return (
-            '🔒 Esse conteúdo exige acesso/login e não pôde ser baixado.'
-        );
-    }
-
-    if (
-        mensagem.includes(
-            'unsupported'
-        )
-    ) {
-        return (
-            '❌ Esse link/formato não é compatível com o downloader.'
-        );
-    }
-
-    if (
-        mensagem.includes(
-            'video unavailable'
-        ) ||
-        mensagem.includes(
-            'unavailable'
-        )
-    ) {
-        return (
-            '❌ Esse vídeo não está disponível para reprodução.'
-        );
-    }
-
-    return (
-        '❌ Não consegui baixar esse áudio.\n\n' +
-        'Tente novamente ou use outro termo/link.'
     );
 }
 
@@ -2352,6 +2999,29 @@ async function comandoAjuda(
 
                 `🎬 /audio\n` +
                 `Envie junto de um vídeo ou responda a um vídeo.\n\n` +
+
+                `📸 Foto de comida\n` +
+                `Envie uma foto para identificar os alimentos (estimativa aproximada).\n` +
+                `Escreva "registrar" na legenda para salvar como refeição.\n\n` +
+
+                `🏋️ /treino <descrição>\n` +
+                `Registrar um treino realizado.\n\n` +
+
+                `📋 /treinos\n` +
+                `Ver treinos registrados.\n\n` +
+
+                `🍽️ /refeicao <descrição>\n` +
+                `Registrar uma refeição.\n\n` +
+
+                `📋 /refeicoes\n` +
+                `Ver refeições registradas.\n\n` +
+
+                `📊 /resumo\n` +
+                `Resumo do dia.\n\n` +
+
+                `🗑️ /excluir treino <n>\n` +
+                `🗑️ /excluir refeicao <n>\n` +
+                `Excluir um registro.\n\n` +
 
                 `🧠 Conversa normal\n` +
                 `Fale comigo normalmente.\n\n` +
@@ -2657,6 +3327,490 @@ async function comandoPerfil(
 }
 
 // ======================================================
+// /TREINO
+// ======================================================
+
+async function comandoTreino(
+    sock,
+    chatJid,
+    descricao
+) {
+    if (!descricao) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `🏋️ *Como registrar treino*\n\n` +
+                    `/treino <descrição>\n\n` +
+                    `Exemplo: /treino 30min corrida`
+            }
+        );
+
+        return;
+    }
+
+    const descricaoLimpa =
+        sanitizarDescricao(
+            descricao
+        );
+
+    if (!descricaoLimpa) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    '❌ Descrição muito curta. Escreva o que você treinou.'
+            }
+        );
+
+        return;
+    }
+
+    const registro =
+        criarRegistro(
+            descricaoLimpa,
+            'treino'
+        );
+
+    treinos.push(registro);
+
+    try {
+        await salvarTreinos();
+
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `✅ *Treino registrado!*\n\n` +
+                    `📝 ${registro.descricao}\n` +
+                    `🕒 ${new Date().toLocaleString('pt-BR')}`
+            }
+        );
+    } catch (erro) {
+        console.error('❌ Erro ao salvar treino:', erro);
+
+        treinos.pop();
+
+        await sock.sendMessage(
+            chatJid,
+            {
+                text: '❌ Erro ao salvar treino. Tente novamente.'
+            }
+        );
+    }
+}
+
+async function comandoTreinos(
+    sock,
+    chatJid
+) {
+    if (treinos.length === 0) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `📋 *Nenhum treino registrado*\n\n` +
+                    `Use /treino <descrição> para registrar.`
+            }
+        );
+
+        return;
+    }
+
+    const treinosHoje =
+        registrosDoDia(
+            treinos
+        );
+
+    const ultimos10 =
+        ultimosRegistros(
+            treinos,
+            10
+        );
+
+    let texto = `🏋️ *Treinos*\n\n`;
+
+    if (treinosHoje.length > 0) {
+        texto += `📅 *Hoje (${treinosHoje.length})*\n`;
+        treinosHoje.forEach(t => {
+            const hora = new Date(t.data).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            texto += `• ${hora} - ${t.descricao}\n`;
+        });
+        texto += `\n`;
+    }
+
+    texto += `📋 *Últimos 10 registros*\n`;
+    ultimos10.forEach(t => {
+        const data = new Date(t.data).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit'
+        });
+        const hora = new Date(t.data).toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        texto += `• ${data} ${hora} - ${t.descricao}\n`;
+    });
+
+    texto += `\n📊 Total: ${treinos.length} treinos`;
+
+    await sock.sendMessage(
+        chatJid,
+        {
+            text: texto
+        }
+    );
+}
+
+// ======================================================
+// /REFEICAO
+// ======================================================
+
+async function comandoRefeicao(
+    sock,
+    chatJid,
+    descricao
+) {
+    if (!descricao) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `🍽️ *Como registrar refeição*\n\n` +
+                    `/refeicao <descrição>\n\n` +
+                    `Exemplo: /refeicao Almoço - arroz, frango e salada`
+            }
+        );
+
+        return;
+    }
+
+    const descricaoLimpa =
+        sanitizarDescricao(
+            descricao
+        );
+
+    if (!descricaoLimpa) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    '❌ Descrição muito curta. Escreva o que você comeu.'
+            }
+        );
+
+        return;
+    }
+
+    const registro =
+        criarRegistro(
+            descricaoLimpa,
+            'refeicao'
+        );
+
+    refeicoes.push(registro);
+
+    try {
+        await salvarRefeicoes();
+
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `✅ *Refeição registrada!*\n\n` +
+                    `📝 ${registro.descricao}\n` +
+                    `🕒 ${new Date().toLocaleString('pt-BR')}`
+            }
+        );
+    } catch (erro) {
+        console.error('❌ Erro ao salvar refeição:', erro);
+
+        refeicoes.pop();
+
+        await sock.sendMessage(
+            chatJid,
+            {
+                text: '❌ Erro ao salvar refeição. Tente novamente.'
+            }
+        );
+    }
+}
+
+async function comandoRefeicoes(
+    sock,
+    chatJid
+) {
+    if (refeicoes.length === 0) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `📋 *Nenhuma refeição registrada*\n\n` +
+                    `Use /refeicao <descrição> para registrar.`
+            }
+        );
+
+        return;
+    }
+
+    const refeicoesHoje =
+        registrosDoDia(
+            refeicoes
+        );
+
+    const ultimas10 =
+        ultimosRegistros(
+            refeicoes,
+            10
+        );
+
+    let texto = `🍽️ *Refeições*\n\n`;
+
+    if (refeicoesHoje.length > 0) {
+        texto += `📅 *Hoje (${refeicoesHoje.length})*\n`;
+        refeicoesHoje.forEach(r => {
+            const hora = new Date(r.data).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            texto += `• ${hora} - ${r.descricao}\n`;
+        });
+        texto += `\n`;
+    }
+
+    texto += `📋 *Últimas 10 refeições*\n`;
+    ultimas10.forEach(r => {
+        const data = new Date(r.data).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit'
+        });
+        const hora = new Date(r.data).toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        texto += `• ${data} ${hora} - ${r.descricao}\n`;
+    });
+
+    texto += `\n📊 Total: ${refeicoes.length} refeições`;
+
+    await sock.sendMessage(
+        chatJid,
+        {
+            text: texto
+        }
+    );
+}
+
+// ======================================================
+// /RESUMO
+// ======================================================
+
+async function comandoResumo(
+    sock,
+    chatJid
+) {
+    const treinosHoje =
+        registrosDoDia(
+            treinos
+        );
+
+    const refeicoesHoje =
+        registrosDoDia(
+            refeicoes
+        );
+
+    let texto = `📊 *Resumo de Hoje*\n\n`;
+    texto += `📅 ${new Date().toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    })}\n\n`;
+
+    texto += `🏋️ *Treinos: ${treinosHoje.length}*\n`;
+    if (treinosHoje.length > 0) {
+        treinosHoje.forEach(t => {
+            const hora = new Date(t.data).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            texto += `• ${hora} - ${t.descricao}\n`;
+        });
+    } else {
+        texto += `Nenhum treino registrado hoje.\n`;
+    }
+
+    texto += `\n🍽️ *Refeições: ${refeicoesHoje.length}*\n`;
+    if (refeicoesHoje.length > 0) {
+        refeicoesHoje.forEach(r => {
+            const hora = new Date(r.data).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            texto += `• ${hora} - ${r.descricao}\n`;
+        });
+    } else {
+        texto += `Nenhuma refeição registrada hoje.\n`;
+    }
+
+    await sock.sendMessage(
+        chatJid,
+        {
+            text: texto
+        }
+    );
+}
+
+// ======================================================
+// /EXCLUIR
+// ======================================================
+
+async function comandoExcluir(
+    sock,
+    chatJid,
+    args
+) {
+    const partes =
+        String(args || '')
+            .trim()
+            .toLowerCase()
+            .split(/\s+/);
+
+    if (partes.length < 2 || !partes[0]) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `🗑️ *Como excluir um registro*\n\n` +
+                    `/excluir treino <n>\n` +
+                    `/excluir refeicao <n>\n\n` +
+                    `O número é a posição na lista (1 = mais recente).\n` +
+                    `Use /treinos ou /refeicoes para ver a lista.`
+            }
+        );
+
+        return;
+    }
+
+    const tipo =
+        partes[0];
+
+    const numero =
+        Number(
+            partes[1]
+        );
+
+    if (
+        !Number.isInteger(numero) ||
+        numero < 1
+    ) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    '❌ Número inválido. Use um número inteiro maior que zero.'
+            }
+        );
+
+        return;
+    }
+
+    let lista;
+    let salvar;
+    let nomeLista;
+
+    if (
+        tipo === 'treino'
+    ) {
+        lista = treinos;
+        salvar = salvarTreinos;
+        nomeLista = 'treino';
+    } else if (
+        tipo === 'refeicao' ||
+        tipo === 'refeição'
+    ) {
+        lista = refeicoes;
+        salvar = salvarRefeicoes;
+        nomeLista = 'refeição';
+    } else {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    '❌ Tipo inválido. Use "treino" ou "refeicao".'
+            }
+        );
+
+        return;
+    }
+
+    const localizado =
+        localizarParaExclusao(
+            lista,
+            numero
+        );
+
+    if (!localizado) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `❌ Só existem ${lista.length} registro(s) de ${nomeLista}.`
+            }
+        );
+
+        return;
+    }
+
+    const indice =
+        localizado.indice;
+
+    const removido =
+        localizado.registro;
+
+    lista.splice(
+        indice,
+        1
+    );
+
+    try {
+        await salvar();
+
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `🗑️ *Registro excluído!*\n\n` +
+                    `📝 ${removido.descricao}\n` +
+                    `🕒 ${new Date(removido.data).toLocaleString('pt-BR')}`
+            }
+        );
+    } catch (erro) {
+        console.error(
+            '❌ Erro ao excluir registro:',
+            erro
+        );
+
+        lista.splice(
+            indice,
+            0,
+            removido
+        );
+
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    '❌ Erro ao excluir registro. Tente novamente.'
+            }
+        );
+    }
+}
+
+// ======================================================
 // /S
 // ======================================================
 
@@ -2691,6 +3845,19 @@ async function comandoSticker(
         return;
     }
 
+    const mediaInfo = imagem || video;
+    const tamanhoMB = (mediaInfo?.fileLength || 0) / (1024 * 1024);
+
+    if (tamanhoMB > 100) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text: `❌ Arquivo muito grande (${tamanhoMB.toFixed(1)}MB). Máximo: 100MB`
+            }
+        );
+        return;
+    }
+
     await sock.sendMessage(
         chatJid,
         {
@@ -2716,6 +3883,22 @@ async function comandoSticker(
         throw new Error(
             'Não foi possível baixar a mídia.'
         );
+    }
+
+    const tamanhoRealMB =
+        buffer.length /
+        (1024 * 1024);
+
+    if (tamanhoRealMB > 100) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `❌ Arquivo muito grande (${tamanhoRealMB.toFixed(1)}MB). Máximo: 100MB`
+            }
+        );
+
+        return;
     }
 
     if (imagem) {
@@ -2771,6 +3954,174 @@ async function comandoSticker(
 }
 
 // ======================================================
+// CONTROLE DE COOLDOWN
+// ======================================================
+
+function verificarCooldown(
+    chatJid
+) {
+    const agora =
+        Date.now();
+
+    const ultimo =
+        cooldownsViral.get(
+            chatJid
+        ) || 0;
+
+    const tempoRestante =
+        COOLDOWN_VIRAL_MS -
+        (agora - ultimo);
+
+    if (
+        tempoRestante > 0
+    ) {
+        return {
+            bloqueado:
+                true,
+
+            segundos:
+                Math.ceil(
+                    tempoRestante /
+                    1000
+                )
+        };
+    }
+
+    cooldownsViral.set(
+        chatJid,
+        agora
+    );
+
+    if (
+        cooldownsViral.size >
+        100
+    ) {
+        const primeira =
+            cooldownsViral
+                .keys()
+                .next()
+                .value;
+
+        cooldownsViral.delete(
+            primeira
+        );
+    }
+
+    return {
+        bloqueado:
+            false
+    };
+}
+
+// ======================================================
+// BAIXAR COM RETRY
+// ======================================================
+
+async function baixarAudioComRetry(
+    url,
+    pasta
+) {
+    let ultimoErro;
+
+    for (
+        let tentativa = 1;
+        tentativa <=
+        MAX_TENTATIVAS_DOWNLOAD;
+        tentativa++
+    ) {
+        try {
+            console.log(
+                `📥 Tentativa ${tentativa}/${MAX_TENTATIVAS_DOWNLOAD}`
+            );
+
+            return await baixarAudio(
+                url,
+                pasta
+            );
+
+        } catch (erro) {
+            ultimoErro =
+                erro;
+
+            const mensagem =
+                String(
+                    erro?.stderr ||
+                    erro?.message ||
+                    ''
+                ).toLowerCase();
+
+            const httpCode =
+                erro?.stderr?.match(
+                    /http error (\d+)/i
+                )?.[1];
+
+            if (
+                httpCode ===
+                '403'
+            ) {
+                console.log(
+                    '🚫 Erro 403 - não retentando'
+                );
+
+                throw erro;
+            }
+
+            if (
+                httpCode ===
+                    '429' ||
+                mensagem.includes(
+                    'too many requests'
+                )
+            ) {
+                if (
+                    tentativa <
+                    MAX_TENTATIVAS_DOWNLOAD
+                ) {
+                    const espera =
+                        Math.pow(
+                            2,
+                            tentativa
+                        ) * 3000;
+
+                    console.log(
+                        `⏳ Rate limit. Aguardando ${espera / 1000}s...`
+                    );
+
+                    await esperar(
+                        espera
+                    );
+
+                    continue;
+                }
+            }
+
+            if (
+                tentativa <
+                MAX_TENTATIVAS_DOWNLOAD
+            ) {
+                const espera =
+                    2000 *
+                    tentativa;
+
+                console.log(
+                    `⚠️ Tentativa falhou. Aguardando ${espera / 1000}s...`
+                );
+
+                await esperar(
+                    espera
+                );
+
+                continue;
+            }
+
+            throw erro;
+        }
+    }
+
+    throw ultimoErro;
+}
+
+// ======================================================
 // /VIRAL
 // ======================================================
 
@@ -2787,12 +4138,89 @@ async function comandoViral(
                     `🎵 *Como usar /viral*\n\n` +
                     `/viral nome da música\n\n` +
                     `ou\n\n` +
-                    `/viral https://link...`
+                    `/viral https://link...\n\n` +
+                    `⏱️ Limite: 1 download a cada ${COOLDOWN_VIRAL_MS / 1000}s\n` +
+                    `📦 Tamanho máximo: ${MAX_FILESIZE_MB}MB`
             }
         );
 
         return;
     }
+
+    const ehUrl =
+        isUrl(
+            termo
+        );
+
+    if (!ytdlpDisponivel) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `⚠️ *Downloader indisponível*\n\n` +
+                    `O serviço de download não está disponível no servidor agora.\n\n` +
+                    `💡 Alternativa: envie o vídeo ou áudio aqui e use /audio.`
+            }
+        );
+
+        return;
+    }
+
+    if (
+        ehUrl &&
+        !urlPublicaSegura(
+            termo
+        )
+    ) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    '🚫 *Link não permitido*\n\n' +
+                    'Use apenas links públicos da internet.'
+            }
+        );
+
+        return;
+    }
+
+    const cooldown =
+        verificarCooldown(
+            chatJid
+        );
+
+    if (
+        cooldown.bloqueado
+    ) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `⏳ *Aguarde ${cooldown.segundos}s*\n\n` +
+                    `Você pode usar /viral novamente em ${cooldown.segundos} segundo(s).`
+            }
+        );
+
+        return;
+    }
+
+    if (
+        downloadEmAndamento
+    ) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    '⏳ *Download em andamento*\n\n' +
+                    'Aguarde o download anterior terminar.'
+            }
+        );
+
+        return;
+    }
+
+    downloadEmAndamento =
+        true;
 
     const pasta =
         await criarTempDir(
@@ -2806,20 +4234,25 @@ async function comandoViral(
         let titulo =
             null;
 
+        const plataforma =
+            ehUrl
+                ? identificarPlataforma(
+                    termo
+                )
+                : null;
+
         await sock.sendMessage(
             chatJid,
             {
                 text:
-                    isUrl(termo)
-                        ? '🔗 Link recebido. Baixando áudio...'
+                    ehUrl
+                        ? `🔗 Link recebido${plataforma && plataforma !== 'Outra' ? ` (${plataforma})` : ''}. Baixando áudio...`
                         : '🔎 Procurando a música...'
             }
         );
 
         if (
-            !isUrl(
-                termo
-            )
+            !ehUrl
         ) {
             const resultado =
                 await procurarVideo(
@@ -2843,7 +4276,7 @@ async function comandoViral(
         }
 
         const arquivo =
-            await baixarAudio(
+            await baixarAudioComRetry(
                 url,
                 pasta
             );
@@ -2862,6 +4295,7 @@ async function comandoViral(
     } catch (erro) {
         console.error(
             '❌ Erro no /viral:',
+            erro?.message ||
             erro
         );
 
@@ -2870,12 +4304,20 @@ async function comandoViral(
             {
                 text:
                     mensagemErroViral(
-                        erro
+                        erro,
+                        ehUrl
+                            ? identificarPlataforma(
+                                termo
+                            )
+                            : null
                     )
             }
         );
 
     } finally {
+        downloadEmAndamento =
+            false;
+
         await apagarPastaSeguro(
             pasta
         );
@@ -2898,6 +4340,37 @@ async function comandoAudio(
             termo
         )
     ) {
+        if (!ytdlpDisponivel) {
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        `⚠️ *Downloader indisponível*\n\n` +
+                        `O serviço de download não está disponível no servidor agora.\n\n` +
+                        `💡 Alternativa: envie o vídeo ou áudio aqui e use /audio.`
+                }
+            );
+
+            return;
+        }
+
+        if (
+            !urlPublicaSegura(
+                termo
+            )
+        ) {
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        '🚫 *Link não permitido*\n\n' +
+                        'Use apenas links públicos da internet.'
+                }
+            );
+
+            return;
+        }
+
         const pasta =
             await criarTempDir(
                 'audio-'
@@ -2927,6 +4400,7 @@ async function comandoAudio(
         } catch (erro) {
             console.error(
                 '❌ Erro /audio link:',
+                erro?.message ||
                 erro
             );
 
@@ -2935,7 +4409,10 @@ async function comandoAudio(
                 {
                     text:
                         mensagemErroViral(
-                            erro
+                            erro,
+                            identificarPlataforma(
+                                termo
+                            )
                         )
                 }
             );
@@ -2986,6 +4463,21 @@ async function comandoAudio(
         return;
     }
 
+    const audioRecebido =
+        obterAudioMensagem(
+            mensagem
+        );
+
+    if (audioRecebido) {
+        await converterAudioRecebido(
+            sock,
+            chatJid,
+            mensagem
+        );
+
+        return;
+    }
+
     await sock.sendMessage(
         chatJid,
         {
@@ -2993,9 +4485,128 @@ async function comandoAudio(
                 `🎧 *Como usar /audio*\n\n` +
                 `• Envie um vídeo junto com /audio\n` +
                 `• Responda a um vídeo com /audio\n` +
+                `• Envie um áudio junto com /audio\n` +
                 `• Use /audio seguido de um link`
         }
     );
+}
+
+// ======================================================
+// CONVERTER ÁUDIO RECEBIDO
+// ======================================================
+
+async function converterAudioRecebido(
+    sock,
+    chatJid,
+    mensagem
+) {
+    const pasta =
+        await criarTempDir(
+            'audio-recebido-'
+        );
+
+    try {
+        const audio =
+            obterAudioMensagem(
+                mensagem
+            );
+
+        const tamanhoMB =
+            (audio?.fileLength || 0) /
+            (1024 * 1024);
+
+        if (tamanhoMB > 50) {
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        `❌ Áudio muito grande (${tamanhoMB.toFixed(1)}MB). Máximo: 50MB`
+                }
+            );
+
+            return;
+        }
+
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    '🎵 Convertendo o áudio para MP3...'
+            }
+        );
+
+        const buffer =
+            await downloadMediaMessage(
+                mensagem,
+                'buffer',
+                {},
+                {
+                    logger,
+
+                    reuploadRequest:
+                        sock.updateMediaMessage
+                }
+            );
+
+        if (!buffer) {
+            throw new Error(
+                'Não foi possível baixar o áudio.'
+            );
+        }
+
+        const tamanhoRealMB =
+            buffer.length /
+            (1024 * 1024);
+
+        if (tamanhoRealMB > 50) {
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        `❌ Áudio muito grande (${tamanhoRealMB.toFixed(1)}MB). Máximo: 50MB`
+                }
+            );
+
+            return;
+        }
+
+        const arquivo =
+            await converterVideoParaAudio(
+                buffer,
+                pasta
+            );
+
+        await enviarAudio(
+            sock,
+            chatJid,
+            arquivo
+        );
+
+        console.log(
+            '✅ Áudio recebido convertido e enviado.'
+        );
+
+    } catch (erro) {
+        console.error(
+            '❌ Erro ao converter áudio recebido:',
+            erro?.message ||
+            erro
+        );
+
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `❌ Não consegui converter esse áudio.\n\n` +
+                    `Verifique se o arquivo está válido e tente novamente.`
+            }
+        );
+
+    } finally {
+        await apagarPastaSeguro(
+            pasta
+        );
+    }
 }
 
 // ======================================================
@@ -3014,6 +4625,19 @@ async function extrairAudioDeVideo(
         );
 
     try {
+        const video = obterVideoMensagem(mensagem);
+        const tamanhoMB = (video?.fileLength || 0) / (1024 * 1024);
+
+        if (tamanhoMB > 100) {
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text: `❌ Vídeo muito grande (${tamanhoMB.toFixed(1)}MB). Máximo: 100MB`
+                }
+            );
+            return;
+        }
+
         await sock.sendMessage(
             chatJid,
             {
@@ -3043,6 +4667,22 @@ async function extrairAudioDeVideo(
             );
         }
 
+        const tamanhoRealMB =
+            buffer.length /
+            (1024 * 1024);
+
+        if (tamanhoRealMB > 100) {
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        `❌ Vídeo muito grande (${tamanhoRealMB.toFixed(1)}MB). Máximo: 100MB`
+                }
+            );
+
+            return;
+        }
+
         const arquivo =
             await converterVideoParaAudio(
                 buffer,
@@ -3062,6 +4702,7 @@ async function extrairAudioDeVideo(
     } catch (erro) {
         console.error(
             '❌ Erro ao extrair áudio:',
+            erro?.message ||
             erro
         );
 
@@ -3413,6 +5054,220 @@ async function processarMensagem(
     }
 
     // ==================================================
+    // TREINOS
+    // ==================================================
+
+    if (
+        textoMinusculo ===
+            '/treino' ||
+        textoMinusculo.startsWith(
+            '/treino '
+        )
+    ) {
+        const descricao =
+            textoNormalizado
+                .replace(
+                    /^\/treino\b/i,
+                    ''
+                )
+                .trim();
+
+        await comandoTreino(
+            sock,
+            chatJid,
+            descricao
+        );
+
+        return;
+    }
+
+    if (
+        textoMinusculo ===
+        '/treinos'
+    ) {
+        await comandoTreinos(
+            sock,
+            chatJid
+        );
+
+        return;
+    }
+
+    // ==================================================
+    // REFEIÇÕES
+    // ==================================================
+
+    if (
+        textoMinusculo ===
+            '/refeicao' ||
+        textoMinusculo.startsWith(
+            '/refeicao '
+        ) ||
+        textoMinusculo ===
+            '/refeição' ||
+        textoMinusculo.startsWith(
+            '/refeição '
+        )
+    ) {
+        const descricao =
+            textoNormalizado
+                .replace(
+                    /^\/refei(?:cao|ção)\b/i,
+                    ''
+                )
+                .trim();
+
+        await comandoRefeicao(
+            sock,
+            chatJid,
+            descricao
+        );
+
+        return;
+    }
+
+    if (
+        textoMinusculo ===
+            '/refeicoes' ||
+        textoMinusculo ===
+            '/refeições'
+    ) {
+        await comandoRefeicoes(
+            sock,
+            chatJid
+        );
+
+        return;
+    }
+
+    // ==================================================
+    // RESUMO
+    // ==================================================
+
+    if (
+        textoMinusculo ===
+        '/resumo'
+    ) {
+        await comandoResumo(
+            sock,
+            chatJid
+        );
+
+        return;
+    }
+
+    // ==================================================
+    // EXCLUIR
+    // ==================================================
+
+    if (
+        textoMinusculo ===
+            '/excluir' ||
+        textoMinusculo.startsWith(
+            '/excluir '
+        )
+    ) {
+        const args =
+            textoNormalizado
+                .replace(
+                    /^\/excluir\b/i,
+                    ''
+                )
+                .trim();
+
+        await comandoExcluir(
+            sock,
+            chatJid,
+            args
+        );
+
+        return;
+    }
+
+    // ==================================================
+    // FOTO / VISÃO
+    // ==================================================
+
+    const imagemFoto =
+        obterImagemMensagem(
+            mensagem
+        );
+
+    const imagemCitadaFoto =
+        !imagemFoto &&
+        detectarIntencaoRegistro(
+            textoNormalizado
+        )
+            ? obterImagemCitada(
+                mensagem
+            )
+            : null;
+
+    if (
+        !imagemFoto &&
+        !imagemCitadaFoto &&
+        ehComandoFoto(
+            textoNormalizado
+        )
+    ) {
+        await sock.sendMessage(
+            chatJid,
+            {
+                text:
+                    `📸 Envie a foto junto com "/registrar" para salvar a refeição.`
+            }
+        );
+
+        return;
+    }
+
+    if (
+        deveProcessarFoto({
+            temImagemDireta:
+                Boolean(
+                    imagemFoto
+                ),
+
+            temImagemCitada:
+                Boolean(
+                    imagemCitadaFoto
+                ),
+
+            texto:
+                textoNormalizado
+        })
+    ) {
+        try {
+            await comandoFoto(
+                sock,
+                chatJid,
+                mensagem,
+                textoNormalizado
+            );
+
+        } catch (erro) {
+            console.error(
+                '❌ Erro visão:',
+                erro?.message ||
+                erro
+            );
+
+            await sock.sendMessage(
+                chatJid,
+                {
+                    text:
+                        mensagemErroVisao(
+                            erro,
+                            MODELO_VISAO
+                        )
+                }
+            );
+        }
+
+        return;
+    }
+
+    // ==================================================
     // SAUDAÇÃO
     // ==================================================
 
@@ -3618,6 +5473,8 @@ async function iniciarBot() {
 
     try {
         await carregarUsuario();
+        await carregarTreinos();
+        await carregarRefeicoes();
 
         console.log(
             '☁️ Preparando autenticação pelo Supabase...'
@@ -3681,6 +5538,10 @@ async function iniciarBot() {
         // ==================================================
         // CREDENCIAIS
         // ==================================================
+
+        sock.ev.removeAllListeners('creds.update');
+        sock.ev.removeAllListeners('connection.update');
+        sock.ev.removeAllListeners('messages.upsert');
 
         let salvamentoCredsEmAndamento =
             Promise.resolve();
@@ -3857,18 +5718,35 @@ async function iniciarBot() {
                         return;
                     }
 
+                    const conflitoSessao =
+                        statusCode ===
+                        DisconnectReason.connectionReplaced;
+
+                    if (
+                        conflitoSessao
+                    ) {
+                        console.log(
+                            '⚠️ Conflito de sessão (440): outra instância está usando esta sessão.'
+                        );
+                    }
+
                     if (
                         !reconexaoAgendada
                     ) {
                         reconexaoAgendada =
                             true;
 
+                        const atraso =
+                            conflitoSessao
+                                ? 60000
+                                : 10000;
+
                         console.log(
-                            '🔄 Reconectando em 10 segundos...'
+                            `🔄 Reconectando em ${atraso / 1000} segundos...`
                         );
 
                         await esperar(
-                            10000
+                            atraso
                         );
 
                         reconexaoAgendada =
@@ -3885,6 +5763,7 @@ async function iniciarBot() {
                                 erro => {
                                     console.error(
                                         '❌ Erro ao reconectar:',
+                                        erro?.message ||
                                         erro
                                     );
                                 }
@@ -4001,12 +5880,36 @@ verificarYoutubeDL()
     .catch(
         erro => {
             console.error(
-                '❌ ERRO FATAL:',
+                '⚠️ yt-dlp indisponível:',
+                erro?.message ||
                 erro
             );
 
-            process.exit(
-                1
+            console.error(
+                '⚠️ O bot vai iniciar mesmo assim.'
             );
+
+            console.error(
+                '⚠️ /viral e /audio por link ficarão indisponíveis.'
+            );
+
+            console.error(
+                'ℹ️ Você pode enviar vídeos/áudios diretamente no WhatsApp e usar /audio.'
+            );
+
+            ytdlpDisponivel =
+                false;
+
+            iniciarBot()
+                .catch(
+                    erroBot => {
+                        console.error(
+                            '❌ ERRO FATAL:',
+                            erroBot
+                        );
+
+                        process.exit(1);
+                    }
+                );
         }
     );
