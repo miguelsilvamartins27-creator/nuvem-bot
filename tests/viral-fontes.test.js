@@ -52,6 +52,45 @@ describe('fallback Internet Archive', () => {
         assert.match(resultado[0].url, /^https:\/\/archive\.org\/download\/open-song\//);
     });
 
+
+    it('rejeita texto que apenas menciona CC0 e licenças sem permissão de adaptação', async () => {
+        const fetchImpl = async url => {
+            const parsed = new URL(url);
+            if (parsed.pathname.endsWith('/advancedsearch.php')) {
+                return respostaJson({ response: { docs: [
+                    { identifier: 'fake-cc0', title: 'Fake CC0' },
+                    { identifier: 'no-derivatives', title: 'No Derivatives' }
+                ] } });
+            }
+            if (parsed.pathname === '/metadata/fake-cc0') {
+                return respostaJson({
+                    metadata: { licenseurl: 'https://example.org/CC0-is-not-a-license' },
+                    files: [{ name: 'song.mp3', format: 'MP3' }]
+                });
+            }
+            if (parsed.pathname === '/metadata/no-derivatives') {
+                return respostaJson({
+                    metadata: { licenseurl: 'https://creativecommons.org/licenses/by-nd/4.0/' },
+                    files: [{ name: 'song.mp3', format: 'MP3' }]
+                });
+            }
+            throw new Error('URL inesperada: ' + url);
+        };
+
+        const resultado = await pesquisarInternetArchive('teste', { fetchImpl });
+        assert.deepEqual(resultado, []);
+    });
+
+    it('limita quantidade de candidatos a um valor seguro', async () => {
+        let chamadas = 0;
+        const resultado = await pesquisarInternetArchive('teste', {
+            limite: 0,
+            fetchImpl: async () => { chamadas++; throw new Error('não deveria chamar'); }
+        });
+        assert.deepEqual(resultado, []);
+        assert.equal(chamadas, 0);
+    });
+
     it('falha de rede resulta em lista vazia, sem derrubar o comando', async () => {
         const resultado = await pesquisarInternetArchive('qualquer música', {
             fetchImpl: async () => { throw new Error('offline'); }
