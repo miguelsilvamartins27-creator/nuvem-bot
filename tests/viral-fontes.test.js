@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { pesquisarInternetArchive } from '../lib/viral/fontes.js';
+import { pesquisarInternetArchive, pesquisarWikimediaCommons } from '../lib/viral/fontes.js';
 
 function respostaJson(valor, status = 200) {
     return {
@@ -89,6 +89,45 @@ describe('fallback Internet Archive', () => {
         });
         assert.deepEqual(resultado, []);
         assert.equal(chamadas, 0);
+    });
+
+    it('busca áudio no Wikimedia Commons apenas com licença reconhecida e host confiável', async () => {
+        const fetchImpl = async url => {
+            const parsed = new URL(url);
+            assert.equal(parsed.hostname, 'commons.wikimedia.org');
+            return respostaJson({
+                query: {
+                    pages: {
+                        1: {
+                            title: 'File:Open track.mp3',
+                            imageinfo: [{
+                                url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Open_track.mp3',
+                                extmetadata: {
+                                    LicenseUrl: { value: 'https://creativecommons.org/licenses/by/4.0/' },
+                                    LicenseShortName: { value: 'CC BY 4.0' },
+                                    ObjectName: { value: 'Open track' }
+                                }
+                            }]
+                        },
+                        2: {
+                            title: 'File:Unknown.mp3',
+                            imageinfo: [{
+                                url: 'https://evil.example/unknown.mp3',
+                                extmetadata: {
+                                    LicenseUrl: { value: 'https://creativecommons.org/licenses/by/4.0/' }
+                                }
+                            }]
+                        }
+                    }
+                }
+            });
+        };
+
+        const resultado = await pesquisarWikimediaCommons('Open track', { fetchImpl });
+        assert.equal(resultado.length, 1);
+        assert.equal(resultado[0].fonte, 'Wikimedia Commons');
+        assert.equal(resultado[0].titulo, 'Open track');
+        assert.match(resultado[0].url, /^https:\/\/upload\.wikimedia\.org\//);
     });
 
     it('falha de rede resulta em lista vazia, sem derrubar o comando', async () => {
