@@ -20,7 +20,6 @@ import youtubedl from 'youtube-dl-exec';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import Groq from 'groq-sdk';
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 
@@ -34,9 +33,6 @@ import {
     urlPublicaSegura,
     identificarPlataforma,
     obterStatusErro,
-    erroEh429,
-    erroTemporarioGroq,
-    obterTempoRetry,
     mensagemErroViral
 } from './lib/utilidades.js';
 
@@ -61,6 +57,15 @@ import {
     extrairRegistroDaAnalise,
     mensagemErroVisao
 } from './lib/visao.js';
+
+import {
+    criarRoteador,
+    mensagemErroRoteador
+} from './lib/ia/roteador.js';
+
+import {
+    analisarMensagem
+} from './lib/filtros.js';
 
 // ======================================================
 // EXEC FILE
@@ -151,7 +156,7 @@ const logger =
     });
 
 // ======================================================
-// GROQ
+// IA - CONFIGURAÇÃO
 // ======================================================
 
 const MODELO_IA =
@@ -164,19 +169,69 @@ const MODELO_VISAO =
 const GROQ_API_KEY =
     process.env.GROQ_API_KEY;
 
-if (!GROQ_API_KEY) {
+const GEMINI_API_KEY =
+    process.env.GEMINI_API_KEY;
+
+const OPENROUTER_API_KEY =
+    process.env.OPENROUTER_API_KEY;
+
+if (
+    !GROQ_API_KEY &&
+    !GEMINI_API_KEY &&
+    !OPENROUTER_API_KEY
+) {
     console.error(
-        '❌ GROQ_API_KEY não encontrada.'
+        '❌ Nenhuma chave de IA configurada (GROQ_API_KEY, GEMINI_API_KEY ou OPENROUTER_API_KEY).'
     );
 
     process.exit(1);
 }
 
-const groq =
-    new Groq({
-        apiKey:
-            GROQ_API_KEY
-    });
+const GEMINI_MODELO_TEXTO =
+    process.env.GEMINI_MODELO_TEXTO ||
+    'gemini-2.5-flash';
+
+const GEMINI_MODELO_VISAO =
+    process.env.GEMINI_MODELO_VISAO ||
+    GEMINI_MODELO_TEXTO;
+
+const OPENROUTER_MODELO_TEXTO =
+    process.env.OPENROUTER_MODELO_TEXTO ||
+    'openrouter/free';
+
+const OPENROUTER_MODELO_VISAO =
+    process.env.OPENROUTER_MODELO_VISAO ||
+    'openrouter/free';
+
+const IA_PERMITIR_PAGO =
+    String(
+        process.env.IA_PERMITIR_PAGO ||
+        ''
+    ).toLowerCase() === 'true';
+
+const IA_LIMITES_DUROS =
+    String(
+        process.env.IA_LIMITES_DUROS ||
+        ''
+    ).toLowerCase() === 'true';
+
+const IA_TIMEOUT_MS =
+    Number(
+        process.env.IA_TIMEOUT_MS
+    ) > 0
+        ? Number(
+            process.env.IA_TIMEOUT_MS
+          )
+        : 45000;
+
+const IA_TENTATIVAS =
+    Number(
+        process.env.IA_TENTATIVAS
+    ) > 0
+        ? Number(
+            process.env.IA_TENTATIVAS
+          )
+        : 2;
 
 const LIMITE_HISTORICO =
     16;
@@ -184,8 +239,134 @@ const LIMITE_HISTORICO =
 let historicoIA =
     [];
 
-let groqBloqueadoAte =
-    0;
+// Uso diário das IAs é apenas auxiliar (aviso/limite mole):
+// os erros reais das APIs mandam. Persistência opcional em
+// bot_data/ia_uso.json via IA_PERSISTIR_USO=true. No Render o disco
+// é efêmero: contadores reiniciam a cada deploy/restart e nunca são
+// fonte de verdade.
+const CAMINHO_USO_IA =
+    path.join(
+        PASTA_DADOS,
+        'ia_uso.json'
+    );
+
+const persistenciaUsoIA =
+    String(
+        process.env.IA_PERSISTIR_USO ||
+        ''
+    ).toLowerCase() === 'true'
+        ? {
+            carregar:
+                async () => {
+                    try {
+                        return JSON.parse(
+                            await fs.readFile(
+                                CAMINHO_USO_IA,
+                                'utf8'
+                            )
+                        );
+                    } catch {
+                        return null;
+                    }
+                },
+
+            salvar:
+                async (uso) => {
+                    await fs.writeFile(
+                        CAMINHO_USO_IA,
+                        JSON.stringify(
+                            uso,
+                            null,
+                            2
+                        )
+                    );
+                }
+        }
+        : null;
+
+const provedoresIAAtivos = [
+    GROQ_API_KEY &&
+        'groq',
+
+    GEMINI_API_KEY &&
+        'gemini',
+
+    OPENROUTER_API_KEY &&
+        'openrouter'
+].filter(Boolean);
+
+const roteadorIA =
+    criarRoteador({
+        provedores: {
+            groq: {
+                chave:
+                    GROQ_API_KEY,
+
+                modeloTexto:
+                    MODELO_IA,
+
+                modeloVisao:
+                    MODELO_VISAO
+            },
+
+            gemini: {
+                chave:
+                    GEMINI_API_KEY,
+
+                modeloTexto:
+                    GEMINI_MODELO_TEXTO,
+
+                modeloVisao:
+                    GEMINI_MODELO_VISAO
+            },
+
+            openrouter: {
+                chave:
+                    OPENROUTER_API_KEY,
+
+                modeloTexto:
+                    OPENROUTER_MODELO_TEXTO,
+
+                modeloVisao:
+                    OPENROUTER_MODELO_VISAO,
+
+                extras: {
+                    referer:
+                        process.env.OPENROUTER_REFERER,
+
+                    titulo:
+                        process.env.OPENROUTER_TITULO
+                }
+            }
+        },
+
+        texto:
+            process.env.IA_TEXTO_ORDEM ||
+            'groq,gemini,openrouter',
+
+        visao:
+            process.env.IA_VISAO_ORDEM ||
+            'groq,gemini,openrouter',
+
+        permitirPago:
+            IA_PERMITIR_PAGO,
+
+        limitesDuros:
+            IA_LIMITES_DUROS,
+
+        tentativasPorProvedor:
+            IA_TENTATIVAS,
+
+        timeoutMs:
+            IA_TIMEOUT_MS,
+
+        persistencia:
+            persistenciaUsoIA,
+
+        log:
+            (mensagem) =>
+                console.log(mensagem)
+    });
 
 // ======================================================
 // SUPABASE
@@ -312,9 +493,6 @@ let downloadEmAndamento =
 // CONSTANTES
 // ======================================================
 
-const MAX_TENTATIVAS_GROQ =
-    3;
-
 const MAX_TAMANHO_AUDIO =
     30 * 1024 * 1024;
 
@@ -350,6 +528,9 @@ app.get(
 
                 ai:
                     MODELO_IA,
+
+                provedores:
+                    provedoresIAAtivos,
 
                 conectado:
                     botConectado,
@@ -1397,37 +1578,12 @@ function limparHistoricoIA() {
 }
 
 // ======================================================
-// GROQ - ERROS
-// ======================================================
-
-// ======================================================
 // IA
 // ======================================================
 
 async function gerarRespostaIAInterna(
     texto
 ) {
-    const agora =
-        Date.now();
-
-    if (
-        agora <
-        groqBloqueadoAte
-    ) {
-        const segundos =
-            Math.ceil(
-                (
-                    groqBloqueadoAte -
-                    agora
-                ) / 1000
-            );
-
-        return (
-            `⏳ A API do Groq está temporariamente no limite.\n\n` +
-            `Tente novamente em aproximadamente ${segundos}s.`
-        );
-    }
-
     const nome =
         usuario.nome ||
         'usuário';
@@ -1495,130 +1651,60 @@ Descontraído = natural, amigável e casual.
         }
     ];
 
-    for (
-        let tentativa = 1;
-        tentativa <=
-        MAX_TENTATIVAS_GROQ;
-        tentativa++
-    ) {
-        try {
-            console.log(
-                `🧠 Groq ${tentativa}/${MAX_TENTATIVAS_GROQ}`
-            );
+    const resultado =
+        await roteadorIA.executar({
+            modalidade:
+                'texto',
 
-            const resposta =
-                await groq
-                    .chat
-                    .completions
-                    .create({
-                        model:
-                            MODELO_IA,
+            mensagens,
 
-                        messages:
-                            mensagens,
+            temperatura:
+                0.7,
 
-                        temperature:
-                            0.7,
+            maxTokens:
+                2048
+        });
 
-                        max_tokens:
-                            2048
-                    });
+    const textoResposta =
+        textoSeguro(
+            resultado.texto
+        );
 
-            const textoResposta =
-                resposta
-                    ?.choices?.[0]
-                    ?.message
-                    ?.content
-                    ?.trim();
-
-            if (
-                !textoResposta
-            ) {
-                throw new Error(
-                    'A Groq não retornou texto.'
-                );
-            }
-
-            historicoIA.push(
-                {
-                    role:
-                        'user',
-
-                    content:
-                        texto
-                },
-
-                {
-                    role:
-                        'assistant',
-
-                    content:
-                        textoResposta
-                }
-            );
-
-            if (
-                historicoIA.length >
-                LIMITE_HISTORICO
-            ) {
-                historicoIA =
-                    historicoIA.slice(
-                        -LIMITE_HISTORICO
-                    );
-            }
-
-            return textoResposta;
-
-        } catch (erro) {
-            console.log(
-                '⚠️ Erro Groq:',
-                erro?.message ||
-                erro
-            );
-
-            if (
-                erroEh429(
-                    erro
-                )
-            ) {
-                const segundos =
-                    obterTempoRetry(
-                        erro
-                    );
-
-                groqBloqueadoAte =
-                    Date.now() +
-                    segundos *
-                        1000;
-
-                throw erro;
-            }
-
-            if (
-                tentativa <
-                    MAX_TENTATIVAS_GROQ &&
-                erroTemporarioGroq(
-                    erro
-                )
-            ) {
-                await esperar(
-                    1500 *
-                    Math.pow(
-                        2,
-                        tentativa - 1
-                    )
-                );
-
-                continue;
-            }
-
-            throw erro;
-        }
+    if (!textoResposta) {
+        throw new Error(
+            'A IA não retornou texto.'
+        );
     }
 
-    throw new Error(
-        'Não foi possível obter resposta da Groq.'
+    historicoIA.push(
+        {
+            role:
+                'user',
+
+            content:
+                texto
+        },
+
+        {
+            role:
+                'assistant',
+
+            content:
+                textoResposta
+        }
     );
+
+    if (
+        historicoIA.length >
+        LIMITE_HISTORICO
+    ) {
+        historicoIA =
+            historicoIA.slice(
+                -LIMITE_HISTORICO
+            );
+    }
+
+    return textoResposta;
 }
 
 function gerarRespostaIA(
@@ -1687,31 +1773,6 @@ async function gerarAnaliseVisaoInterna({
     mimetype,
     legenda
 }) {
-    const agora =
-        Date.now();
-
-    if (
-        agora <
-        groqBloqueadoAte
-    ) {
-        const segundos =
-            Math.ceil(
-                (
-                    groqBloqueadoAte -
-                    agora
-                ) / 1000
-            );
-
-        return {
-            texto:
-                `⏳ A API do Groq está temporariamente no limite.\n\n` +
-                `Tente novamente em aproximadamente ${segundos}s.`,
-
-            bloqueado:
-                true
-        };
-    }
-
     const mensagens =
         montarMensagensVisao({
             base64,
@@ -1728,108 +1789,27 @@ async function gerarAnaliseVisaoInterna({
                 })
         });
 
-    for (
-        let tentativa = 1;
-        tentativa <=
-        MAX_TENTATIVAS_GROQ;
-        tentativa++
-    ) {
-        try {
-            console.log(
-                `👁️ Groq visão ${tentativa}/${MAX_TENTATIVAS_GROQ}`
-            );
+    const resultado =
+        await roteadorIA.executar({
+            modalidade:
+                'visao',
 
-            const resposta =
-                await groq
-                    .chat
-                    .completions
-                    .create({
-                        model:
-                            MODELO_VISAO,
+            mensagens,
 
-                        messages:
-                            mensagens,
+            temperatura:
+                0.4,
 
-                        temperature:
-                            0.4,
+            maxTokens:
+                1024
+        });
 
-                        max_tokens:
-                            1024
-                    });
+    return {
+        texto:
+            resultado.texto,
 
-            const textoResposta =
-                resposta
-                    ?.choices?.[0]
-                    ?.message
-                    ?.content
-                    ?.trim();
-
-            if (
-                !textoResposta
-            ) {
-                throw new Error(
-                    'A Groq não retornou texto.'
-                );
-            }
-
-            return {
-                texto:
-                    textoResposta,
-
-                bloqueado:
-                    false
-            };
-
-        } catch (erro) {
-            console.log(
-                '⚠️ Erro Groq visão:',
-                erro?.message ||
-                erro
-            );
-
-            if (
-                erroEh429(
-                    erro
-                )
-            ) {
-                const segundos =
-                    obterTempoRetry(
-                        erro
-                    );
-
-                groqBloqueadoAte =
-                    Date.now() +
-                    segundos *
-                        1000;
-
-                throw erro;
-            }
-
-            if (
-                tentativa <
-                    MAX_TENTATIVAS_GROQ &&
-                erroTemporarioGroq(
-                    erro
-                )
-            ) {
-                await esperar(
-                    1500 *
-                    Math.pow(
-                        2,
-                        tentativa - 1
-                    )
-                );
-
-                continue;
-            }
-
-            throw erro;
-        }
-    }
-
-    throw new Error(
-        'Não foi possível analisar a foto.'
-    );
+        bloqueado:
+            false
+    };
 }
 
 async function comandoFoto(
@@ -4804,12 +4784,21 @@ async function processarMensagem(
         return;
     }
 
-    const id =
-        mensagem.key?.id;
+    const analise =
+        analisarMensagem(
+            mensagem,
+            {
+                meuChat:
+                    MEU_CHAT
+            }
+        );
 
-    if (!id) {
+    if (!analise.ok) {
         return;
     }
+
+    const id =
+        analise.id;
 
     if (
         mensagensProcessadas.has(
@@ -4834,27 +4823,7 @@ async function processarMensagem(
     }
 
     const chatJid =
-        mensagem.key
-            ?.remoteJid;
-
-    const fromMe =
-        mensagem.key
-            ?.fromMe;
-
-    if (!chatJid) {
-        return;
-    }
-
-    if (!fromMe) {
-        return;
-    }
-
-    if (
-        chatJid !==
-        MEU_CHAT
-    ) {
-        return;
-    }
+        analise.chatJid;
 
     const texto =
         extrairTextoMensagem(
@@ -5256,10 +5225,18 @@ async function processarMensagem(
                 chatJid,
                 {
                     text:
-                        mensagemErroVisao(
-                            erro,
-                            MODELO_VISAO
-                        )
+                        erro?.roteador
+                            ? mensagemErroRoteador(
+                                erro,
+                                {
+                                    visao:
+                                        true
+                                }
+                            )
+                            : mensagemErroVisao(
+                                erro,
+                                MODELO_VISAO
+                            )
                 }
             );
         }
@@ -5334,7 +5311,7 @@ async function processarMensagem(
     }
 
     console.log(
-        '🧠 Consultando Groq...'
+        '🧠 Consultando IA...'
     );
 
     await sock.sendMessage(
@@ -5361,31 +5338,20 @@ async function processarMensagem(
 
     } catch (erro) {
         console.error(
-            '❌ Erro Groq:',
+            '❌ Erro IA:',
             erro
         );
 
         if (
-            erroEh429(
-                erro
-            )
+            erro?.roteador
         ) {
-            const segundos =
-                obterTempoRetry(
-                    erro
-                );
-
-            groqBloqueadoAte =
-                Date.now() +
-                segundos *
-                    1000;
-
             await sock.sendMessage(
                 chatJid,
                 {
                     text:
-                        `⏳ A Groq atingiu temporariamente o limite.\n\n` +
-                        `Tente novamente em aproximadamente ${segundos}s.`
+                        mensagemErroRoteador(
+                            erro
+                        )
                 }
             );
 
@@ -5405,8 +5371,8 @@ async function processarMensagem(
                 chatJid,
                 {
                     text:
-                        `❌ A chave da Groq foi recusada.\n\n` +
-                        `Verifique a GROQ_API_KEY.`
+                        `❌ A chave da IA foi recusada.\n\n` +
+                        `Verifique as chaves configuradas no .env.`
                 }
             );
 
@@ -5636,7 +5602,7 @@ async function iniciarBot() {
                     );
 
                     console.log(
-                        `🧠 IA: ${MODELO_IA}`
+                        `🧠 IA: ${MODELO_IA} (${provedoresIAAtivos.join(', ')})`
                     );
 
                     console.log(
