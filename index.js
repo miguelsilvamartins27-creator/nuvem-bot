@@ -4616,10 +4616,14 @@ async function comandoViral(
                 );
             }
 
-            candidatos = candidatos.map(candidato => ({
-                ...candidato,
-                fonte: candidato.fonte || 'YouTube'
-            }));
+            // Reserva metade do orçamento para cada fonte: sem isso, os
+            // primeiros resultados do YouTube poderiam ocupar todas as tentativas.
+            candidatos = candidatos
+                .slice(0, MAX_CANDIDATOS_TENTATIVA)
+                .map(candidato => ({
+                    ...candidato,
+                    fonte: candidato.fonte || 'YouTube'
+                }));
 
             if (candidatosAlternativos.length) {
                 if (!candidatos.length) {
