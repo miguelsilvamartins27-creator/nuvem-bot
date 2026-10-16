@@ -4641,8 +4641,8 @@ async function comandoViral(
                     {
                         text:
                             '❌ *Não encontrei áudio disponível nas fontes consultadas.*\n\n' +
-                            'O YouTube pode estar bloqueando o servidor e o catálogo alternativo não retornou uma faixa com licença aberta verificável.\n\n' +
-                            '💡 Tente outro termo ou envie um link direto de áudio autorizado.'
+                            'A busca pode não ter encontrado uma correspondência ou uma das fontes pode estar temporariamente indisponível.\n\n' +
+                            '💡 Tente artista + título, use outro termo ou envie um link direto de áudio autorizado.'
                     }
                 );
                 return;
