@@ -99,6 +99,8 @@ import {
     processarCandidatos
 } from './lib/viral/pipeline.js';
 
+import { pesquisarInternetArchive } from './lib/viral/fontes.js';
+
 // ======================================================
 // EXEC FILE
 // ======================================================
@@ -4592,37 +4594,35 @@ async function comandoViral(
                     );
             } catch (erroBusca) {
                 console.error(
-                    `❌ ${idOperacao}: falha na busca:`,
-                    erroBusca?.message ||
-                    erroBusca
+                    `❌ ${idOperacao}: falha na busca principal:`,
+                    erroBusca?.message || erroBusca
                 );
-
-                await sock.sendMessage(
-                    chatJid,
-                    {
-                        text:
-                            mensagemErroViral(
-                                erroBusca
-                            )
-                    }
-                );
-
-                return;
+                candidatos = [];
             }
 
-            if (
-                !candidatos.length
-            ) {
+            // Fonte alternativa independente. Só aceita arquivos cujo catálogo
+            // indique licença aberta/domínio público nos metadados.
+            if (!candidatos.length) {
+                await sock.sendMessage(
+                    chatJid,
+                    { text: '🔁 Busca principal indisponível. Tentando o catálogo alternativo de áudio aberto...' }
+                );
+                candidatos = await pesquisarInternetArchive(entrada.valor, {
+                    limite: MAX_CANDIDATOS_TENTATIVA
+                });
+                ehBusca = true;
+            }
+
+            if (!candidatos.length) {
                 await sock.sendMessage(
                     chatJid,
                     {
                         text:
-                            '❌ *Nenhum resultado encontrado*\n\n' +
-                            'Não encontrei um candidato adequado para esse termo.\n\n' +
-                            '💡 Tente um termo mais específico (artista + nome da música).'
+                            '❌ *Não encontrei áudio disponível nas fontes consultadas.*\\n\\n' +
+                            'O YouTube pode estar bloqueando o servidor e o catálogo alternativo não retornou uma faixa com licença aberta verificável.\\n\\n' +
+                            '💡 Tente outro termo ou envie um link direto de áudio autorizado.'
                     }
                 );
-
                 return;
             }
 
