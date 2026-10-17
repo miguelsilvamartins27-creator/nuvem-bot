@@ -32,6 +32,49 @@ $("#meal-photo-form")?.addEventListener("submit",async e=>{e.preventDefault();if
 function initWellnessForms(){const d=isoToday();if($("#fit-date"))$("#fit-date").value=$("#fit-date").value||d;if($("#meal-date"))$("#meal-date").value=$("#meal-date").value||d;if($("#fit-exercises")&&!$("#fit-exercises").children.length)addExerciseRow();if($("#meal-foods")&&!$("#meal-foods").children.length)addFoodRow();}
 initWellnessForms();
 
+const exerciseLibraryState={items:[],lastQuery:""};
+function exerciseMeta(value){return Array.isArray(value)?value.filter(Boolean).join(", "):String(value||"");}
+function drawExerciseSuggestions(items){
+  const area=$("#exercise-library-results");if(!area)return;area.replaceChildren();
+  if(!items.length){const empty=node("div","exercise-library-empty");empty.append(node("span","","⌕"),node("strong","","Nenhum resultado encontrado"),node("small","","Tente o nome popular em português, como supino reto, puxada alta, cadeira extensora ou rosca martelo."));area.appendChild(empty);return;}
+  for(const exercise of items){
+    const card=node("article","exercise-library-card"),media=node("div","exercise-card-media"),image=document.createElement("img"),body=node("div","exercise-card-body"),heading=node("div","exercise-card-heading"),title=node("h3","",exercise.displayName||exercise.name),group=node("span","exercise-group",exercise.group||"Exercício"),meta=node("p","exercise-card-meta",[exerciseMeta(exercise.targetMuscles),exerciseMeta(exercise.equipment)].filter(Boolean).join(" · "));
+    image.src=exercise.gifUrl;image.alt="Demonstração animada de "+(exercise.displayName||exercise.name);image.loading="lazy";image.decoding="async";image.onerror=()=>{image.hidden=true;media.classList.add("exercise-image-missing");media.append(node("span","","Demonstração indisponível"));};
+    media.appendChild(image);heading.append(title,group);body.append(heading,meta);
+    const actions=node("div","exercise-card-actions"),details=node("button","button button-secondary","Ver como fazer"),add=node("button","button button-primary","＋ Adicionar ao treino");
+    details.type=add.type="button";
+    details.addEventListener("click",()=>showExerciseDetail(exercise));
+    add.addEventListener("click",()=>{addExerciseRow({name:exercise.displayName||exercise.name,sets:3,reps:"8–12"});if(!$("#fit-title").value.trim())$("#fit-title").value="Treino do dia";setApiStatus("#fit-status","Exercício adicionado. Ajuste séries e repetições ao seu plano.");$("#fit-form").scrollIntoView({behavior:"smooth",block:"center"});});
+    actions.append(details,add);body.append(actions);card.append(media,body);area.appendChild(card);
+  }
+}
+function showExerciseDetail(exercise){
+  const area=$("#exercise-detail");if(!area)return;area.replaceChildren();
+  const top=node("div","exercise-detail-top"),title=node("div","",undefined),heading=node("h3","",exercise.displayName||exercise.name),sub=node("p","exercise-card-meta",[exercise.group,exercise.equipment].filter(Boolean).join(" · ")),close=node("button","exercise-detail-close","Fechar ×");
+  title.append(heading,sub);close.type="button";close.addEventListener("click",()=>{area.hidden=true;});top.append(title,close);
+  const layout=node("div","exercise-detail-layout"),visual=node("div","exercise-detail-visual"),image=document.createElement("img"),instructions=node("div","exercise-detail-instructions");
+  image.src=exercise.gifUrl;image.alt="Demonstração do exercício "+(exercise.displayName||exercise.name);image.loading="lazy";image.onerror=()=>{image.hidden=true;visual.append(node("p","muted","A animação não carregou. Confira as instruções abaixo."));};visual.appendChild(image);
+  instructions.appendChild(node("h4","","Como fazer"));
+  const steps=Array.isArray(exercise.howTo)?exercise.howTo:[];if(steps.length){const list=document.createElement("ol");for(const step of steps)list.appendChild(node("li","",String(step)));instructions.appendChild(list);}else instructions.appendChild(node("p","muted","A fonte não retornou um passo a passo para este exercício. Comece com pouca carga e peça orientação a um profissional."));
+  const cues=Array.isArray(exercise.cues)?exercise.cues:[];if(cues.length){instructions.appendChild(node("h4","","Pontos de atenção"));const list=document.createElement("ul");for(const cue of cues)list.appendChild(node("li","",String(cue)));instructions.appendChild(list);}
+  const targets=[...(exercise.targetMuscles||[]),...(exercise.secondaryMuscles||[])].filter(Boolean);if(targets.length)instructions.appendChild(node("p","exercise-card-meta","Músculos indicados pela base: "+targets.join(", ")));
+  layout.append(visual,instructions);area.append(top,layout);
+  const actions=node("div","exercise-detail-actions"),add=node("button","button button-primary","＋ Adicionar ao meu treino");add.type="button";add.addEventListener("click",()=>{addExerciseRow({name:exercise.displayName||exercise.name,sets:3,reps:"8–12"});if(!$("#fit-title").value.trim())$("#fit-title").value="Treino do dia";setApiStatus("#fit-status","Exercício adicionado ao criador de treino.");$("#fit-form").scrollIntoView({behavior:"smooth",block:"center"});});actions.appendChild(add);area.appendChild(actions);area.hidden=false;area.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+async function searchExercises(query){
+  const search=String(query||"").trim();if(!search)return setApiStatus("#exercise-search-status","Digite um exercício ou escolha uma pesquisa popular.",true);
+  const button=$("#exercise-search-submit");button.disabled=true;setApiStatus("#exercise-search-status","Buscando exercícios e demonstrações…");$("#exercise-detail").hidden=true;
+  try{
+    const data=await api("/api/app/exercises?search="+encodeURIComponent(search));exerciseLibraryState.items=data.exercises||[];exerciseLibraryState.lastQuery=search;drawExerciseSuggestions(exerciseLibraryState.items);
+    const count=exerciseLibraryState.items.length;
+    setApiStatus("#exercise-search-status",count?count+" resultado(s) para “"+search+"”. "+(data.notice||""):data.notice||"Nenhum resultado encontrado.",!count);
+  }catch(error){drawExerciseSuggestions([]);setApiStatus("#exercise-search-status",error.message,true);}
+  finally{button.disabled=!session;}
+}
+$("#exercise-search-form")?.addEventListener("submit",event=>{event.preventDefault();searchExercises($("#exercise-search-input")?.value);});
+document.querySelectorAll("[data-exercise-query]").forEach(button=>button.addEventListener("click",()=>{const query=button.dataset.exerciseQuery||"";$("#exercise-search-input").value=query;searchExercises(query);}));
+
+
 async function askWellnessAI(kind){const fit=kind==="fit",question=$(fit?"#fit-ai-question":"#meal-ai-question"),button=$(fit?"#fit-ai-submit":"#meal-ai-submit"),status=fit?"#fit-ai-status":"#meal-ai-status",result=fit?"#fit-ai-result":"#meal-ai-result";const text=question?.value.trim();if(!text)return setApiStatus(status,"Escreva sua pergunta primeiro.",true);button.disabled=true;setApiStatus(status,"A Nuvem está preparando uma sugestão…");$(result).hidden=true;try{const context=fit?"Você está na Área Fit da Nuvem. Dê uma sugestão geral de atividade/treino segura, adaptável ao nível iniciante e sem prometer resultados. Pergunte por limitações relevantes quando necessário, recomende técnica e descanso, e não faça diagnóstico médico. Pedido: ":"Você está na área Nutrição da Nuvem. Sugira combinações e ideias equilibradas sem demonizar alimentos, prescrever dieta restritiva, metas de calorias ou compensação por exercício. Se a pessoa mencionar alergias ou condição clínica, incentive confirmar orientações com profissional. Pedido: ";const response=await api("/api/app/chat",{method:"POST",body:JSON.stringify({content:context+text})});$(result).replaceChildren(node("h3","",fit?"Sugestão de treino":"Ideias para sua refeição"),node("p","meal-analysis-copy",response.message?.content||"A IA não retornou uma resposta."));$(result).hidden=false;setApiStatus(status,"Resposta pronta. Ela também fica salva no histórico do assistente.");await loadHistory();}catch(e){setApiStatus(status,e.message,true);}finally{button.disabled=false;}}
 $("#fit-ai-form")?.addEventListener("submit",e=>{e.preventDefault();askWellnessAI("fit");});
 $("#meal-ai-form")?.addEventListener("submit",e=>{e.preventDefault();askWellnessAI("meal");});
