@@ -726,3 +726,56 @@ label{color:#373733!important;font-weight:650}
   .welcome-row:after{right:-100px}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+
+/* Tema adaptável Nuvem: claro/escuro, aplicado a todas as áreas */
+html{color-scheme:light}
+html[data-theme="light"]{color-scheme:light;--theme-bg:#f6f6f4;--theme-panel:#fff;--theme-text:#171717;--theme-muted:#70706c;--theme-line:#e4e4e1;--theme-input:#fff;--theme-soft:#f1f1ee}
+html[data-theme="dark"]{color-scheme:dark;--theme-bg:#101114;--theme-panel:#18191d;--theme-text:#f2f2f0;--theme-muted:#a0a09b;--theme-line:#303136;--theme-input:#202125;--theme-soft:#232428}
+html[data-theme="light"] body,html[data-theme="light"] .app-shell,html[data-theme="light"] .main{background:var(--theme-bg)!important;color:var(--theme-text)!important}
+html[data-theme="dark"] body,html[data-theme="dark"] .app-shell,html[data-theme="dark"] .main,html[data-theme="dark"] .view{background:var(--theme-bg)!important;color:var(--theme-text)!important}
+html[data-theme="dark"] .topbar{background:rgba(20,20,22,.92)!important;border-color:#303136!important}
+html[data-theme="dark"] .breadcrumb,html[data-theme="dark"] .breadcrumb strong{color:#e8e8e5!important}
+html[data-theme="dark"] .welcome-row,html[data-theme="dark"] .wellness-hero,html[data-theme="dark"] .sticker-page-intro,html[data-theme="dark"] .ai-remaster-hero{background:linear-gradient(125deg,#1c1d21,#151619)!important;border-color:#303136!important;color:#f2f2f0!important}
+html[data-theme="dark"] .welcome-row h1,html[data-theme="dark"] .page-intro h1,html[data-theme="dark"] .wellness-hero h1,html[data-theme="dark"] .sticker-page-intro h1,html[data-theme="dark"] .ai-remaster-hero h1,html[data-theme="dark"] .section-heading h2,html[data-theme="dark"] .fit-page-heading h2,html[data-theme="dark"] .login-card h1{color:#f5f5f2!important}
+html[data-theme="dark"] .welcome-row h1 span,html[data-theme="dark"] .ai-remaster-hero h1 span,html[data-theme="dark"] .page-intro h1 span{color:#a5a5a0!important;-webkit-text-fill-color:#a5a5a0!important}
+html[data-theme="dark"] .lead,html[data-theme="dark"] .muted,html[data-theme="dark"] .muted-text,html[data-theme="dark"] .feature-desc,html[data-theme="dark"] .notice p,html[data-theme="dark"] .form-footnote,html[data-theme="dark"] .wellness-stat span,html[data-theme="dark"] .wellness-stat small{color:#aaa9a4!important}
+html[data-theme="dark"] .notice,html[data-theme="dark"] .feature-card,html[data-theme="dark"] .tool-card,html[data-theme="dark"] .stat-card,html[data-theme="dark"] .panel,html[data-theme="dark"] .wellness-panel,html[data-theme="dark"] .wellness-stat,html[data-theme="dark"] .exercise-folder-card,html[data-theme="dark"] .expense-card,html[data-theme="dark"] .history-item,html[data-theme="dark"] .login-card,html[data-theme="dark"] .ai-side-card,html[data-theme="dark"] .ai-chat-remastered,html[data-theme="dark"] .sticker-editor-panel,html[data-theme="dark"] .sticker-pack-panel,html[data-theme="dark"] .media-tool-card,html[data-theme="dark"] .media-search-card,html[data-theme="dark"] .settings-list,html[data-theme="dark"] .theme-setting-card{background:#191a1e!important;color:#f1f1ee!important;border-color:#303136!important;box-shadow:0 8px 28px #0002!important}
+html[data-theme="dark"] .feature-title,html[data-theme="dark"] .notice strong,html[data-theme="dark"] .wellness-note strong,html[data-theme="dark"] .setting-row strong,html[data-theme="dark"] label,html[data-theme="dark"] .exercise-builder-head strong{color:#f0f0ed!important}
+html[data-theme="dark"] .feature-icon,html[data-theme="dark"] .tool-icon,html[data-theme="dark"] .setting-icon,html[data-theme="dark"] .notice-icon,html[data-theme="dark"] .wellness-orb,html[data-theme="dark"] .hero-orb,html[data-theme="dark"] .ai-hero-orbit,html[data-theme="dark"] .ai-profile-orb,html[data-theme="dark"] .ai-avatar-core,html[data-theme="dark"] .assistant-avatar{background:linear-gradient(145deg,#3a3a3d,#242427)!important;color:#fff!important;border-color:#46464a!important;box-shadow:inset 0 1px #ffffff12,0 6px 0 #111!important}
+html[data-theme="dark"] .button-primary,html[data-theme="dark"] .primary-button,html[data-theme="dark"] .send-button,html[data-theme="dark"] .ai-chat-history-head button,html[data-theme="dark"] .ai-chat-history-head button{background:#f1f1ee!important;color:#111!important;border-color:#f1f1ee!important;box-shadow:0 4px 0 #3a3a3a!important}
+html[data-theme="dark"] .button-secondary,html[data-theme="dark"] .secondary-button,html[data-theme="dark"] .button-quiet,html[data-theme="dark"] .logout-button,html[data-theme="dark"] .back-link,html[data-theme="dark"] .small-tool,html[data-theme="dark"] .sticker-tool-row button,html[data-theme="dark"] .sticker-tool-actions button{background:#242529!important;color:#f1f1ee!important;border-color:#414247!important;box-shadow:none!important}
+html[data-theme="dark"] input,html[data-theme="dark"] textarea,html[data-theme="dark"] select,html[data-theme="dark"] .chat-form,html[data-theme="dark"] .chat-form textarea,html[data-theme="dark"] .ai-chat-remastered .chat-form{background:#202125!important;color:#f2f2f0!important;border-color:#414247!important}
+html[data-theme="dark"] input:focus,html[data-theme="dark"] textarea:focus,html[data-theme="dark"] select:focus{border-color:#888!important;box-shadow:0 0 0 3px #ffffff0b!important}
+html[data-theme="dark"] ::placeholder{color:#85858a!important}
+html[data-theme="dark"] .wellness-note,html[data-theme="dark"] .fit-workspace-nav,html[data-theme="dark"] .sticker-studio-tabs,html[data-theme="dark"] .range-controls,html[data-theme="dark"] .time-counter,html[data-theme="dark"] .media-status-row,html[data-theme="dark"] .media-notice,html[data-theme="dark"] .status,html[data-theme="dark"] .form-footnote[role="status"]{background:#222327!important;color:#b9b9b4!important;border-color:#36373c!important}
+html[data-theme="dark"] .fit-tab,html[data-theme="dark"] .sticker-tab{color:#aaa!important}
+html[data-theme="dark"] .fit-tab.active,html[data-theme="dark"] .sticker-tab.active{background:#343539!important;color:#fff!important;border-color:#48494e!important}
+html[data-theme="dark"] .ai-chat-remastered .chat-top,html[data-theme="dark"] .ai-chat-remastered .chat-messages{background:#17181b!important;color:#f2f2f0!important}
+html[data-theme="dark"] .ai-chat-remastered .assistant-message{background:#292a2e!important;border-color:#3a3b40!important;color:#eee!important}
+html[data-theme="dark"] .ai-chat-remastered .user-message{background:#f1f1ee!important;color:#111!important;border-color:#f1f1ee!important}
+html[data-theme="dark"] .ai-chat-remastered .chat-form{background:#202125!important}
+html[data-theme="dark"] .ai-prompt-suggestions button,html[data-theme="dark"] .chat-audio-button,html[data-theme="dark"] .chat-delete-button,html[data-theme="dark"] .chat-list-row,html[data-theme="dark"] .chat-list-row.active{background:#242529!important;color:#eee!important;border-color:#414247!important}
+html[data-theme="dark"] .chat-list-pick,html[data-theme="dark"] .chat-list-row.active .chat-list-pick,html[data-theme="dark"] .chat-list-icon,html[data-theme="dark"] .ai-chat-history-head,html[data-theme="dark"] .ai-side-label,html[data-theme="dark"] .ai-capability-list{color:#ccc!important}
+html[data-theme="dark"] .meal-food-row,html[data-theme="dark"] .fit-exercise-row{background:#222327!important;border-color:#3a3b40!important}
+html[data-theme="dark"] .sticker-upload-zone,html[data-theme="dark"] .upload-zone,html[data-theme="dark"] .sticker-pack-grid{background:#202125!important;border-color:#46474c!important;color:#ddd!important}
+html[data-theme="dark"] .sticker-preview-wrap{background:repeating-conic-gradient(#25262a 0% 25%,#1a1b1e 0% 50%) 50%/20px 20px!important;border-color:#3a3b40!important}
+html[data-theme="dark"] .waveform-wrap{background:repeating-linear-gradient(90deg,#292a2e 0,#292a2e calc(10% - 1px),#393a3e calc(10% - 1px),#393a3e 10%)!important;border-color:#4b4c51!important}
+html[data-theme="dark"] .waveform-wrap canvas{filter:grayscale(1) invert(.8)!important}
+html[data-theme="dark"] .mobile-nav{background:rgba(24,24,27,.96)!important;border-color:#333438!important}
+html[data-theme="dark"] .mobile-nav-item{color:#aaa!important}
+html[data-theme="dark"] .mobile-nav-item.active{background:#f1f1ee!important;color:#111!important}
+html[data-theme="dark"] .login-screen{background:#101114!important}
+html[data-theme="dark"] .footer{color:#858580!important}
+html[data-theme="dark"] .theme-choice{background:#222327!important;color:#eee!important;border-color:#414247!important}
+html[data-theme="dark"] .theme-choice[aria-checked="true"]{background:#f1f1ee!important;color:#111!important;border-color:#f1f1ee!important}
+.theme-toggle{width:38px;height:38px;display:inline-grid;place-items:center;flex:none;border:1px solid #dededb;border-radius:50%;background:#fff;color:#111;cursor:pointer;font-size:18px;line-height:1;transition:transform .18s,background .18s,border-color .18s;box-shadow:0 3px 0 #e8e8e3}
+.theme-toggle:hover{transform:translateY(-2px)}
+.theme-toggle:focus-visible,.theme-choice:focus-visible{outline:3px solid #888;outline-offset:3px}
+html[data-theme="dark"] .theme-toggle{background:#242529;color:#fff;border-color:#414247;box-shadow:0 3px 0 #09090a}
+.theme-setting-card{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px;padding:19px 21px;border:1px solid #e5e5e0;border-radius:15px;background:#fff}
+.theme-setting-copy strong,.theme-setting-copy small{display:block}.theme-setting-copy strong{font-size:14px}.theme-setting-copy small{font-size:12px;color:var(--theme-muted);margin-top:4px}
+.theme-choice-group{display:flex;gap:7px;padding:5px;background:#efefec;border:1px solid #e4e4df;border-radius:12px}
+.theme-choice{display:flex;align-items:center;gap:8px;padding:9px 13px;border:1px solid transparent;border-radius:9px;background:transparent;color:#555;cursor:pointer;font-size:12px;font-weight:700}
+.theme-choice[aria-checked="true"]{background:#fff;color:#111;border-color:#deded9;box-shadow:0 2px 6px #0000000a}
+@media(max-width:600px){.theme-setting-card{align-items:flex-start;flex-direction:column}.theme-choice-group{width:100%}.theme-choice{flex:1;justify-content:center}.theme-toggle{width:35px;height:35px}}
