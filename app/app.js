@@ -18,7 +18,7 @@ async function sendChat(event){event.preventDefault();if(busy||!session)return;c
 function drawExpenses(expenses){const list=$("#expense-list");list.replaceChildren();const total=expenses.reduce((sum,e)=>sum+Number(e.amount),0);$("#expense-total").textContent=formatBRL(total);$("#expense-total").dataset.valorOriginal=formatBRL(total);$("#expense-count").textContent=String(expenses.length);$("#expense-count").dataset.valorOriginal=String(expenses.length);const categories={};for(const e of expenses)categories[e.category]=(categories[e.category]||0)+Number(e.amount);const top=Object.entries(categories).sort((a,b)=>b[1]-a[1])[0];$("#expense-category").textContent=top?top[0]:"—";const hero=$("#expense-total-hero");if(hero){hero.textContent=formatBRL(total);hero.dataset.valorOriginal=formatBRL(total);if(esconderValoresFinanceiros)hero.textContent="R$ ••••••";}if(esconderValoresFinanceiros){$("#expense-total").textContent="R$ ••••••";$("#expense-count").textContent="••";}if(!expenses.length){list.appendChild(node("p","muted","Nenhuma despesa registrada ainda."));return;}for(const e of expenses.slice(0,50)){const row=node("div","expense-row"),info=node("div","expense-info"),title=node("strong","",e.description),meta=node("small","",e.category+" · "+new Date(e.spent_at+"T12:00:00").toLocaleDateString("pt-BR")),amount=node("strong","expense-amount",formatBRL(e.amount)),remove=node("button","expense-remove","Excluir");info.append(title,meta);remove.type="button";remove.addEventListener("click",async()=>{if(!confirm("Excluir esta despesa?"))return;remove.disabled=true;try{await api("/api/app/expenses/"+encodeURIComponent(e.id),{method:"DELETE"});await loadExpenses();setApiStatus("#expense-status","Despesa excluída.");}catch(err){setApiStatus("#expense-status",err.message,true);remove.disabled=false;}});row.append(info,amount,remove);list.appendChild(row);}}
 async function loadExpenses(){const data=await api("/api/app/expenses");drawExpenses(data.expenses);}
 async function addExpense(event){event.preventDefault();if(!session)return;const description=$("#expense-description").value.trim(),amount=Number($("#expense-amount").value);const button=$("#expense-submit");button.disabled=true;setApiStatus("#expense-status","Salvando…");try{await api("/api/app/expenses",{method:"POST",body:JSON.stringify({description,amount,category:$("#expense-category-input")?.value||"Outros"})});$("#expense-form").reset();await loadExpenses();setApiStatus("#expense-status","Despesa salva com segurança.");}catch(e){setApiStatus("#expense-status",e.message,true);}finally{button.disabled=false;}}
-function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";}
+function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable","#sticker-file","#sticker-submit","#audio-file","#audio-submit","#audio-search-query","#audio-search-submit"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";}
 async function loadProfile(){const data=await api("/api/app/me");const p=data.profile||{};$("#profile-name").value=p.display_name||"";$("#profile-assistant").value=p.assistant_name||"Nuvem";$("#profile-language").value=p.language||"pt-BR";$("#profile-style").value=p.response_style||"balanced";["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>$(s).disabled=false);setApiStatus("#profile-status","Preferências carregadas.");}
 async function saveProfile(event){event.preventDefault();if(!session)return;const button=$("#profile-save");button.disabled=true;setApiStatus("#profile-status","Salvando preferências…");try{await api("/api/app/me",{method:"PUT",body:JSON.stringify({display_name:$("#profile-name").value,assistant_name:$("#profile-assistant").value,language:$("#profile-language").value,response_style:$("#profile-style").value})});setApiStatus("#profile-status","Preferências salvas.");}catch(e){setApiStatus("#profile-status",e.message,true);}finally{button.disabled=false;}}
 $("#profile-form").addEventListener("submit",saveProfile);
@@ -55,3 +55,97 @@ if("serviceWorker"in navigator&&location.protocol==="https:")window.addEventList
 let esconderValoresFinanceiros=false;
 function atualizarVisibilidadeFinanceira(){const ids=["#expense-total-hero","#expense-total","#expense-count"];for(const id of ids){const el=$(id);if(!el)continue;if(!el.dataset.valorOriginal)el.dataset.valorOriginal=el.textContent;el.textContent=esconderValoresFinanceiros?(id==="#expense-count"?"••":"R$ ••••••"):el.dataset.valorOriginal;}document.querySelectorAll(".expense-amount").forEach(el=>{if(!el.dataset.valorOriginal)el.dataset.valorOriginal=el.textContent;el.textContent=esconderValoresFinanceiros?"R$ ••••••":el.dataset.valorOriginal;});const button=$("#finance-eye");if(button){button.textContent=esconderValoresFinanceiros?"◌":"◉";button.setAttribute("aria-pressed",String(esconderValoresFinanceiros));button.setAttribute("aria-label",esconderValoresFinanceiros?"Mostrar valores":"Ocultar valores");}}
 $("#finance-eye")?.addEventListener("click",()=>{esconderValoresFinanceiros=!esconderValoresFinanceiros;atualizarVisibilidadeFinanceira();});
+
+
+// Nuvem Studio: uploads go directly to authenticated endpoints and are not persisted.
+async function enviarArquivoParaDownload(path, file, statusSelector, button, fallbackName) {
+  if (!session || !file) { setApiStatus(statusSelector, "Entre e escolha um arquivo primeiro.", true); return; }
+  if (file.size > 12 * 1024 * 1024) { setApiStatus(statusSelector, "O limite é 12 MB por arquivo.", true); return; }
+  button.disabled = true;
+  setApiStatus(statusSelector, "Processando arquivo com segurança…");
+  try {
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + session.access_token, "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+      cache: "no-store"
+    });
+    if (!response.ok) {
+      let message = "Não foi possível processar o arquivo.";
+      try { const body = await response.json(); if (body.error) message = body.error; } catch {}
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    if (!blob.size) throw new Error("O servidor retornou um arquivo vazio.");
+    const disposition = response.headers.get("content-disposition") || "";
+    const name = disposition.match(/filename="([^"]+)"/i)?.[1] || fallbackName;
+    const url = URL.createObjectURL(blob);
+    const link = node("a", "", "Baixar arquivo");
+    link.href = url;
+    link.download = name;
+    link.className = "button button-primary media-download-link";
+    link.click();
+    setApiStatus(statusSelector, "Pronto! O download foi iniciado.");
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (error) {
+    setApiStatus(statusSelector, error.message || "Erro ao processar arquivo.", true);
+  } finally {
+    button.disabled = !session;
+  }
+}
+$("#sticker-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const file = $("#sticker-file")?.files?.[0];
+  if (!file) return setApiStatus("#sticker-status", "Escolha uma imagem, GIF ou vídeo.", true);
+  const isVideo = file.type.startsWith("video/");
+  const isImage = file.type.startsWith("image/");
+  if (!isVideo && !isImage) return setApiStatus("#sticker-status", "Formato não suportado. Escolha uma imagem, GIF ou vídeo.", true);
+  const endpoint = isVideo ? "/api/app/media/sticker-video" : "/api/app/media/sticker";
+  await enviarArquivoParaDownload(endpoint, file, "#sticker-status", $("#sticker-submit"), isVideo ? "nuvem-figurinha-animada.webp" : "nuvem-figurinha.webp");
+});
+$("#audio-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const file = $("#audio-file")?.files?.[0];
+  if (!file) return setApiStatus("#audio-status", "Escolha um vídeo ou áudio.", true);
+  if (!(file.type.startsWith("video/") || file.type.startsWith("audio/"))) return setApiStatus("#audio-status", "Escolha um arquivo de áudio ou vídeo compatível.", true);
+  await enviarArquivoParaDownload("/api/app/media/audio", file, "#audio-status", $("#audio-submit"), "nuvem-audio.mp3");
+});
+function desenharResultadosAudio(results) {
+  const area = $("#audio-search-results");
+  if (!area) return;
+  area.replaceChildren();
+  if (!results.length) { area.appendChild(node("p", "muted", "Nenhum resultado com licença aberta foi encontrado. Tente outro termo.")); return; }
+  for (const item of results) {
+    let url;
+    try { url = new URL(item.url); } catch { continue; }
+    if (url.protocol !== "https:" || !(url.hostname === "upload.wikimedia.org" || url.hostname === "archive.org")) continue;
+    const card = node("article", "media-result");
+    const details = node("div", "media-result-details");
+    details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "", item.source || "Fonte aberta"));
+    const link = node("a", "media-result-link", "Abrir áudio ↗");
+    link.href = url.href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.setAttribute("aria-label", "Abrir " + (item.title || "áudio") + " em nova aba");
+    card.append(details, link);
+    area.appendChild(card);
+  }
+}
+$("#audio-search-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const query = $("#audio-search-query").value.trim();
+  const button = $("#audio-search-submit");
+  if (!query) return setApiStatus("#audio-search-status", "Digite o que deseja encontrar.", true);
+  button.disabled = true;
+  setApiStatus("#audio-search-status", "Pesquisando fontes abertas…");
+  $("#audio-search-results")?.replaceChildren();
+  try {
+    const result = await api("/api/app/media/search-audio", { method: "POST", body: JSON.stringify({ query }) });
+    desenharResultadosAudio(result.results || []);
+    setApiStatus("#audio-search-status", result.results?.length ? result.notice || "Pesquisa concluída." : "Pesquisa concluída sem resultados.");
+  } catch (error) {
+    setApiStatus("#audio-search-status", error.message, true);
+  } finally {
+    button.disabled = !session;
+  }
+});
