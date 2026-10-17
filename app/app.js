@@ -33,6 +33,73 @@ function initWellnessForms(){const d=isoToday();if($("#fit-date"))$("#fit-date")
 initWellnessForms();
 
 const exerciseLibraryState={items:[],lastQuery:""};
+
+const exerciseFolderStorageKey="nuvem.fit.exercise-folders.v1";
+let exerciseFolders=[];
+let currentExerciseFolderId=null;
+function loadExerciseFolders(){
+  try{const raw=localStorage.getItem(exerciseFolderStorageKey);const parsed=raw?JSON.parse(raw):[];exerciseFolders=Array.isArray(parsed)?parsed.filter(f=>f&&typeof f.id==="string"&&typeof f.name==="string"&&Array.isArray(f.exercises)):[];}
+  catch{exerciseFolders=[];}
+}
+function saveExerciseFolders(){
+  try{localStorage.setItem(exerciseFolderStorageKey,JSON.stringify(exerciseFolders));setApiStatus("#exercise-folder-status","✓ Pastas salvas neste navegador.");return true;}
+  catch{setApiStatus("#exercise-folder-status","Não foi possível salvar. Verifique o espaço disponível no navegador.",true);return false;}
+}
+function switchFitSubpage(name){
+  document.querySelectorAll("#view-fit .fit-subview").forEach(el=>el.classList.toggle("active",el.id==="fit-subview-"+name));
+  document.querySelectorAll("[data-fit-tab]").forEach(el=>el.classList.toggle("active",el.dataset.fitTab===(name==="folder-detail"?"folders":name)));
+  const area=$("#view-fit");if(area)area.scrollIntoView({behavior:"smooth",block:"start"});
+}
+document.querySelectorAll("[data-fit-tab]").forEach(button=>button.addEventListener("click",()=>switchFitSubpage(button.dataset.fitTab)));
+
+function switchDietSubpage(name){
+  document.querySelectorAll("#view-dieta .fit-subview").forEach(el=>el.classList.toggle("active",el.id==="diet-subview-"+name));
+  document.querySelectorAll("[data-diet-tab]").forEach(el=>el.classList.toggle("active",el.dataset.dietTab===name));
+  $("#view-dieta")?.scrollIntoView({behavior:"smooth",block:"start"});
+}
+document.querySelectorAll("[data-diet-tab]").forEach(button=>button.addEventListener("click",()=>switchDietSubpage(button.dataset.dietTab)));
+
+function renderExerciseFolders(){
+  const area=$("#exercise-folder-list");if(!area)return;area.replaceChildren();
+  if(!exerciseFolders.length){const empty=node("div","exercise-library-empty");empty.append(node("span","","📁"),node("strong","","Suas pastas começam aqui"),node("small","","Crie sua primeira pasta e depois adicione os exercícios que quiser."));area.appendChild(empty);return;}
+  for(const folder of exerciseFolders){
+    const card=node("article","exercise-folder-card"),icon=node("div","exercise-folder-icon","📁"),body=node("div","exercise-folder-body"),title=node("h3","",folder.name),count=node("p","",folder.exercises.length+" exercício"+(folder.exercises.length===1?"":"s")),actions=node("div","exercise-folder-actions"),open=node("button","button button-primary","Abrir pasta →"),del=node("button","button button-quiet","Excluir");
+    open.type=del.type="button";open.addEventListener("click",()=>openExerciseFolder(folder.id));del.addEventListener("click",()=>{if(!confirm("Excluir a pasta “"+folder.name+"” e os exercícios guardados nela?"))return;exerciseFolders=exerciseFolders.filter(item=>item.id!==folder.id);saveExerciseFolders();renderExerciseFolders();if(currentExerciseFolderId===folder.id){currentExerciseFolderId=null;switchFitSubpage("folders");}});
+    body.append(title,count);actions.append(open,del);card.append(icon,body,actions);area.appendChild(card);
+  }
+}
+function openExerciseFolder(id){
+  const folder=exerciseFolders.find(item=>item.id===id);if(!folder)return;currentExerciseFolderId=id;
+  $("#exercise-current-folder-title").textContent=folder.name;$("#exercise-current-folder-description").textContent="Adicione, consulte e organize os exercícios guardados nesta pasta.";
+  $("#exercise-search-input").value="";$("#exercise-library-results").replaceChildren();$("#exercise-detail").hidden=true;
+  setApiStatus("#exercise-search-status","Digite um exercício ou escolha uma pesquisa popular.");renderSavedExercises();switchFitSubpage("folder-detail");
+}
+function addExerciseToCurrentFolder(exercise){
+  const folder=exerciseFolders.find(item=>item.id===currentExerciseFolderId);if(!folder)return setApiStatus("#exercise-search-status","Volte às pastas e abra uma pasta primeiro.",true);
+  const key=String(exercise.id||exercise.name).toLowerCase();
+  if(folder.exercises.some(item=>String(item.id||item.name).toLowerCase()===key||item.name===exercise.name)){setApiStatus("#exercise-search-status","Esse exercício já está nesta pasta.");return;}
+  folder.exercises.push({...exercise,name:exercise.displayName||exercise.name});saveExerciseFolders();renderExerciseFolders();renderSavedExercises();setApiStatus("#exercise-search-status","✓ "+(exercise.displayName||exercise.name)+" foi guardado em “"+folder.name+"”.");
+}
+function renderSavedExercises(){
+  const area=$("#exercise-folder-saved-list"),folder=exerciseFolders.find(item=>item.id===currentExerciseFolderId);if(!area||!folder)return;
+  area.replaceChildren();$("#exercise-current-folder-count").textContent=folder.exercises.length+" exercício"+(folder.exercises.length===1?"":"s");
+  if(!folder.exercises.length){area.appendChild(node("p","muted","Esta pasta ainda está vazia. Use a pesquisa abaixo para adicionar seu primeiro exercício."));return;}
+  for(const exercise of folder.exercises){
+    const card=node("article","exercise-saved-card"),media=node("div","exercise-saved-media"),img=document.createElement("img"),body=node("div","exercise-saved-body"),title=node("strong","",exercise.name||exercise.displayName),meta=node("small","", [exercise.group,exercise.equipment].filter(Boolean).join(" · ")),actions=node("div","exercise-saved-actions"),details=node("button","button button-quiet","Como fazer"),add=node("button","button button-secondary","＋ No treino"),remove=node("button","button button-quiet","Remover");
+    if(exercise.gifUrl){img.src=exercise.gifUrl;img.alt="Demonstração de "+exercise.name;img.loading="lazy";img.onerror=()=>{img.hidden=true;};media.appendChild(img);}else media.appendChild(node("span","","✦"));
+    details.type=add.type=remove.type="button";details.addEventListener("click",()=>showExerciseDetail(exercise));add.addEventListener("click",()=>{addExerciseRow({name:exercise.name,sets:3,reps:"8–12"});if(!$("#fit-title").value.trim())$("#fit-title").value="Treino do dia";setApiStatus("#fit-status","✓ "+exercise.name+" adicionado à sessão. Ajuste séries e repetições.");switchFitSubpage("builder");});remove.addEventListener("click",()=>{folder.exercises=folder.exercises.filter(item=>item!==exercise);saveExerciseFolders();renderExerciseFolders();renderSavedExercises();});
+    body.append(title,meta);actions.append(details,add,remove);body.appendChild(actions);card.append(media,body);area.appendChild(card);
+  }
+}
+$("#exercise-folder-form")?.addEventListener("submit",event=>{
+  event.preventDefault();const input=$("#exercise-folder-name"),name=input.value.trim();if(!name)return;
+  if(exerciseFolders.some(folder=>folder.name.toLocaleLowerCase("pt-BR")===name.toLocaleLowerCase("pt-BR"))){setApiStatus("#exercise-folder-status","Você já tem uma pasta com esse nome.",true);return;}
+  const folder={id:crypto.randomUUID?.()||String(Date.now())+Math.random().toString(16).slice(2),name,exercises:[]};exerciseFolders.push(folder);
+  if(saveExerciseFolders()){input.value="";renderExerciseFolders();openExerciseFolder(folder.id);}
+});
+$("#exercise-folder-back")?.addEventListener("click",()=>{currentExerciseFolderId=null;switchFitSubpage("folders");renderExerciseFolders();});
+loadExerciseFolders();
+
 function exerciseMeta(value){return Array.isArray(value)?value.filter(Boolean).join(", "):String(value||"");}
 function drawExerciseSuggestions(items){
   const area=$("#exercise-library-results");if(!area)return;area.replaceChildren();
@@ -41,10 +108,10 @@ function drawExerciseSuggestions(items){
     const card=node("article","exercise-library-card"),media=node("div","exercise-card-media"),image=document.createElement("img"),body=node("div","exercise-card-body"),heading=node("div","exercise-card-heading"),title=node("h3","",exercise.displayName||exercise.name),group=node("span","exercise-group",exercise.group||"Exercício"),meta=node("p","exercise-card-meta",[exerciseMeta(exercise.targetMuscles),exerciseMeta(exercise.equipment)].filter(Boolean).join(" · "));
     image.src=exercise.gifUrl;image.alt="Demonstração animada de "+(exercise.displayName||exercise.name);image.loading="lazy";image.decoding="async";image.onerror=()=>{image.hidden=true;media.classList.add("exercise-image-missing");media.append(node("span","","Demonstração indisponível"));};
     media.appendChild(image);heading.append(title,group);body.append(heading,meta);
-    const actions=node("div","exercise-card-actions"),details=node("button","button button-secondary","Ver como fazer"),add=node("button","button button-primary","＋ Adicionar ao treino");
+    const actions=node("div","exercise-card-actions"),details=node("button","button button-secondary","Ver como fazer"),add=node("button","button button-primary","＋ Guardar na pasta");
     details.type=add.type="button";
     details.addEventListener("click",()=>showExerciseDetail(exercise));
-    add.addEventListener("click",()=>{addExerciseRow({name:exercise.displayName||exercise.name,sets:3,reps:"8–12"});if(!$("#fit-title").value.trim())$("#fit-title").value="Treino do dia";setApiStatus("#fit-status","Exercício adicionado. Ajuste séries e repetições ao seu plano.");$("#fit-form").scrollIntoView({behavior:"smooth",block:"center"});});
+    add.addEventListener("click",()=>addExerciseToCurrentFolder(exercise));
     actions.append(details,add);body.append(actions);card.append(media,body);area.appendChild(card);
   }
 }
@@ -59,7 +126,7 @@ function showExerciseDetail(exercise){
   const cues=Array.isArray(exercise.cues)?exercise.cues:[];if(cues.length){instructions.appendChild(node("h4","","Pontos de atenção"));const list=document.createElement("ul");for(const cue of cues)list.appendChild(node("li","",String(cue)));instructions.appendChild(list);}
   const targets=[...(exercise.targetMuscles||[]),...(exercise.secondaryMuscles||[])].filter(Boolean);if(targets.length)instructions.appendChild(node("p","exercise-card-meta","Músculos indicados pela base: "+targets.join(", ")));
   layout.append(visual,instructions);area.append(top,layout);
-  const actions=node("div","exercise-detail-actions"),add=node("button","button button-primary","＋ Adicionar ao meu treino");add.type="button";add.addEventListener("click",()=>{addExerciseRow({name:exercise.displayName||exercise.name,sets:3,reps:"8–12"});if(!$("#fit-title").value.trim())$("#fit-title").value="Treino do dia";setApiStatus("#fit-status","Exercício adicionado ao criador de treino.");$("#fit-form").scrollIntoView({behavior:"smooth",block:"center"});});actions.appendChild(add);area.appendChild(actions);area.hidden=false;area.scrollIntoView({behavior:"smooth",block:"nearest"});
+  const folder=exerciseFolders.find(item=>item.id===currentExerciseFolderId),alreadySaved=!!folder&&folder.exercises.some(item=>String(item.id||item.name).toLowerCase()===String(exercise.id||exercise.name).toLowerCase()||item.name===exercise.name);const actions=node("div","exercise-detail-actions"),add=node("button","button button-primary",alreadySaved?"＋ Adicionar ao meu treino":"＋ Guardar nesta pasta");add.type="button";add.addEventListener("click",()=>{if(!alreadySaved)return addExerciseToCurrentFolder(exercise);addExerciseRow({name:exercise.displayName||exercise.name,sets:3,reps:"8–12"});if(!$("#fit-title").value.trim())$("#fit-title").value="Treino do dia";setApiStatus("#fit-status","✓ "+(exercise.displayName||exercise.name)+" adicionado à sessão.");switchFitSubpage("builder");});actions.appendChild(add);area.appendChild(actions);area.hidden=false;area.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 async function searchExercises(query){
   const search=String(query||"").trim();if(!search)return setApiStatus("#exercise-search-status","Digite um exercício ou escolha uma pesquisa popular.",true);
