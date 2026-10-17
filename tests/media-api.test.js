@@ -36,11 +36,17 @@ describe('Central de mídia da Nuvem', () => {
     assert.ok(js.includes('/api/app/media/search-audio'));
     assert.ok(js.includes('media-audio-player'));
     assert.ok(html.includes('Enviar figurinha ao WhatsApp'));
-    assert.ok(html.includes('Remover fundo uniforme'));
+    assert.ok(html.includes('Recorte inteligente'));
     assert.ok(html.includes('sticker-pack-select'));
     assert.ok(js.includes('MAX_STICKERS_PER_PACK = 8'));
-    assert.ok(js.includes('removeUniformBackground'));
+    assert.ok(js.includes('removeSmartBackground'));
     assert.ok(html.includes('id="view-figurinhas"'));
+    assert.ok(html.includes('id="sticker-video-action"'));
+    assert.ok(html.includes('Adicionar animada ao pacote selecionado'));
+    assert.ok(js.includes('action==="pack"'));
+    assert.ok(html.includes('ai-remaster-hero'));
+    assert.ok(html.includes('ai-prompt-suggestions'));
+    assert.ok(js.includes('data-prompt'));
   });
 
   it('a interface mantém o controle de ocultar valores no resumo e nos gráficos', async () => {
