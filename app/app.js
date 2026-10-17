@@ -709,52 +709,31 @@ function desenharResultadosAudio(results) {
   const area = $("#audio-search-results");
   if (!area) return;
   area.replaceChildren();
-  if (!results.length) {
-    area.appendChild(node("p", "muted", "Não apareceu resultado nesta tentativa. Tente outro termo, o nome do artista ou uma descrição em inglês."));
-    return;
-  }
+  if (!results.length) { area.appendChild(node("div", "audio-empty-state", "Não encontrei resultados desta vez. Tente outro termo ou pesquise também em inglês.")); return; }
+  let shown = 0;
   for (const item of results) {
-    let url;
-    try { url = new URL(item.url); } catch { continue; }
+    let url; try { url = new URL(item.url); } catch { continue; }
     if (url.protocol !== "https:") continue;
     const host = url.hostname.toLowerCase().replace(/^www\./, "");
     const trusted = ["youtube.com","m.youtube.com","music.youtube.com","youtu.be","youtube-nocookie.com","soundcloud.com","m.soundcloud.com","upload.wikimedia.org","archive.org"].includes(host);
     if (!trusted) continue;
-    const card = node("article", "media-result");
-    const details = node("div", "media-result-details");
-    details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "", item.source || "Fonte"), node("small", "muted", "Uso: " + (item.license || "consulte a plataforma original")));
-    card.appendChild(details);
-    if (item.embedUrl) {
-      try {
-        const embed = new URL(item.embedUrl);
-        if (embed.protocol === "https:" && embed.hostname === "www.youtube-nocookie.com" && /^\/embed\/[\w-]{11}$/.test(embed.pathname)) {
-          const frame = document.createElement("iframe");
-          frame.className = "audio-result-embed";
-          frame.src = embed.href;
-          frame.title = "Prévia: " + (item.title || "resultado de áudio");
-          frame.loading = "lazy";
-          frame.referrerPolicy = "strict-origin-when-cross-origin";
-          frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-          frame.allowFullscreen = true;
-          card.appendChild(frame);
-        }
-      } catch {}
-    } else if (["upload.wikimedia.org","archive.org"].includes(host)) {
-      const player = node("audio", "media-audio-player");
-      player.controls = true;
-      player.preload = "none";
-      player.src = url.href;
-      player.setAttribute("aria-label", "Reproduzir " + (item.title || "áudio"));
-      card.appendChild(player);
-    }
-    const link = node("a", "media-result-link", "Abrir na fonte ↗");
-    link.href = url.href;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.setAttribute("aria-label", "Abrir " + (item.title || "áudio") + " na fonte original");
-    card.appendChild(link);
-    area.appendChild(card);
+    const card = node("article", "media-result audio-result-card");
+    const media = node("div", "audio-result-media");
+    let thumbnailUrl = "";
+    try { const candidate = new URL(item.thumbnail || ""); const imageHost = candidate.hostname.toLowerCase().replace(/^www\./, ""); const validImageHost = ["i.ytimg.com","img.youtube.com","upload.wikimedia.org","archive.org"].includes(imageHost) || imageHost.endsWith(".sndcdn.com") || imageHost === "soundcloud.com"; if (candidate.protocol === "https:" && validImageHost) thumbnailUrl = candidate.href; } catch {}
+    if (thumbnailUrl) { const image = document.createElement("img"); image.src = thumbnailUrl; image.alt = "Imagem de " + (item.title || "resultado pesquisado"); image.loading = "lazy"; image.referrerPolicy = "no-referrer"; image.onerror = () => { image.remove(); media.classList.add("audio-result-media-fallback"); media.textContent = "♫"; }; media.appendChild(image); }
+    else { media.classList.add("audio-result-media-fallback"); media.appendChild(node("span", "", item.source?.includes("YouTube") ? "▶" : "♫")); }
+    const content = node("div", "audio-result-content"); const details = node("div", "media-result-details");
+    details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "audio-result-source", item.source || "Fonte"), node("small", "muted", item.duration ? "Duração: " + Math.floor(item.duration / 60) + ":" + String(Math.floor(item.duration % 60)).padStart(2, "0") : (item.kind === "open" ? "Arquivo de áudio com licença indicada pela fonte" : "Prévia externa · consulte as opções da plataforma")));
+    content.appendChild(details);
+    if (item.embedUrl) { try { const embed = new URL(item.embedUrl); if (embed.protocol === "https:" && embed.hostname === "www.youtube-nocookie.com" && /^\/embed\/[\w-]{11}$/.test(embed.pathname)) { const frame = document.createElement("iframe"); frame.className = "audio-result-embed"; frame.src = embed.href; frame.title = "Prévia: " + (item.title || "resultado de áudio"); frame.loading = "lazy"; frame.referrerPolicy = "strict-origin-when-cross-origin"; frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"; frame.allowFullscreen = true; content.appendChild(frame); } } catch {} }
+    else if (item.downloadable === true && ["upload.wikimedia.org","archive.org"].includes(host)) { const player = node("audio", "media-audio-player"); player.controls = true; player.preload = "none"; player.src = url.href; player.setAttribute("aria-label", "Reproduzir " + (item.title || "áudio")); content.appendChild(player); }
+    const actions = node("div", "audio-result-actions"); const sourceLink = node("a", "media-result-link", item.embedUrl ? "▶ Ver/ouvir no YouTube ↗" : (host.includes("soundcloud") ? "▶ Ouvir no SoundCloud ↗" : "Abrir na fonte ↗"));
+    sourceLink.href = url.href; sourceLink.target = "_blank"; sourceLink.rel = "noopener noreferrer"; sourceLink.setAttribute("aria-label", "Abrir " + (item.title || "áudio") + " na fonte original"); actions.appendChild(sourceLink);
+    if (item.downloadable === true && ["upload.wikimedia.org","archive.org"].includes(host)) { const downloadLink = node("a", "media-result-download", "↓ Baixar áudio"); downloadLink.href = url.href; downloadLink.target = "_blank"; downloadLink.rel = "noopener noreferrer"; downloadLink.setAttribute("download", ((item.title || "nuvem-audio").replace(/[^\p{L}\p{N}._ -]/gu, "").trim().slice(0, 80) || "nuvem-audio") + ".mp3"); downloadLink.setAttribute("aria-label", "Baixar ou salvar " + (item.title || "áudio") + " da fonte aberta"); actions.appendChild(downloadLink); }
+    content.appendChild(actions); card.append(media, content); area.appendChild(card); shown++;
   }
+  if (!shown) area.appendChild(node("p", "muted", "Os resultados recebidos não tinham links seguros para exibir. Tente outra pesquisa."));
 }
 $("#audio-search-form")?.addEventListener("submit", async event => {
   event.preventDefault();
