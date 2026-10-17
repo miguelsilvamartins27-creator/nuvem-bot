@@ -12,13 +12,15 @@ const swUrl = new URL('../app/sw.js', import.meta.url);
 describe('Nuvem remaster visual and database migration', () => {
   it('uses a calm, consistent color system rather than pure black/white surfaces', async () => {
     const css = await fs.readFile(cssUrl, 'utf8');
-    assert.ok(css.includes('--n-bg:#f2f5f1'));
-    assert.ok(css.includes('--n-panel:#fbfcf9'));
-    assert.ok(css.includes('--n-text:#293b34'));
-    assert.ok(css.includes('--n-accent:#397e70'));
+    assert.ok(css.includes('--n-bg:#e8e6de'));
+    assert.ok(css.includes('--n-panel:#efede6'));
+    assert.ok(css.includes('--n-text:#4a554b'));
+    assert.ok(css.includes('--n-accent:#6d8f7e'));
     assert.ok(css.includes('html[data-theme="dark"]'));
-    assert.ok(css.includes('--n-bg:#202827'));
+    assert.ok(css.includes('--n-bg:#292e2b'));
     assert.ok(css.includes('#view-ia .chat-form:focus-within'));
+    assert.ok(css.includes('@keyframes nuvemRobotFloat'));
+    assert.ok(css.includes('.typing-label'));
     assert.ok(css.includes('@media(max-width:760px)'));
     assert.ok(css.includes('.mobile-nav{display:none!important}'));
     assert.ok(css.includes('display:flex!important'));
@@ -29,8 +31,9 @@ describe('Nuvem remaster visual and database migration', () => {
     for (const id of ['view-ia', 'chat-list', 'chat-new', 'chat-delete', 'chat-messages', 'chat-form', 'chat-input', 'chat-send', 'chat-audio-button', 'chat-audio-file', 'chat-status']) {
       assert.ok(html.includes('id="' + id + '"'), 'missing chat control: ' + id);
     }
-    assert.ok(html.includes('polish.css?v=4'));
-    assert.ok(html.includes('app.js?v=33'));
+    assert.ok(html.includes('polish.css?v=5'));
+    assert.ok(html.includes('app.js?v=34'));
+    assert.ok(html.includes('ai-hero-robot'));
     assert.ok(html.includes('HISTÓRICO DE CONVERSAS'));
     assert.ok(html.includes('Pergunte qualquer coisa à Nuvem'));
   });
@@ -41,10 +44,17 @@ describe('Nuvem remaster visual and database migration', () => {
     const sw = await fs.readFile(swUrl, 'utf8');
     assert.ok(icon.includes('<linearGradient'));
     assert.ok(icon.includes('Nuvem'));
-    assert.equal(manifest.theme_color, '#f2f5f1');
-    assert.ok(sw.includes('nuvem-shell-v34'));
-    assert.ok(sw.includes('/app/polish.css?v=4'));
-    assert.ok(sw.includes('/app/app.js?v=33'));
+    assert.equal(manifest.theme_color, '#e8e6de');
+    assert.ok(sw.includes('nuvem-shell-v35'));
+    assert.ok(sw.includes('/app/polish.css?v=5'));
+    assert.ok(sw.includes('/app/app.js?v=34'));
+  });
+
+  it('shows the assistant robot and animated thinking label', async () => {
+    const js = await fs.readFile(new URL('../app/app.js', import.meta.url), 'utf8');
+    assert.ok(js.includes('assistant-message-head'));
+    assert.ok(js.includes('A Nuvem está pensando'));
+    assert.ok(js.includes('typing-robot'));
   });
 
   it('keeps the multiple-conversation migration rerunnable and preserves old message history', async () => {
