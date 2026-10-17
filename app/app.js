@@ -8,13 +8,13 @@ function setApiStatus(selector,message,isError=false){const el=$(selector);if(el
 async function api(path,options={}){if(!session?.access_token)throw new Error("Entre na sua conta novamente.");const response=await fetch(path,{...options,headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.access_token,...(options.headers||{})}});let body={};try{body=await response.json()}catch{}if(!response.ok)throw new Error(body.error||"Não foi possível concluir a operação.");return body;}
 function formatBRL(value){return Number(value||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
 function node(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=text;return el;}
-function addChatMessage(role,content){const area=$("#chat-messages");if(!area)return;const bubble=node("div","chat-message "+(role==="user"?"user-message":"assistant-message"),content);area.appendChild(bubble);area.scrollTop=area.scrollHeight;}
+function addChatMessage(role,content){const area=$("#chat-messages");if(!area)return;const bubble=node("div","chat-message "+(role==="user"?"user-message":"assistant-message"));bubble.textContent=String(content??"");area.appendChild(bubble);area.scrollTop=area.scrollHeight;}
 async function loadChat(){const area=$("#chat-messages");if(!area)return;area.replaceChildren();try{const data=await api("/api/app/chat?limit=40");if(!data.messages.length)addChatMessage("assistant","Olá! Sou a Nuvem. Como posso ajudar?");for(const m of data.messages)addChatMessage(m.role,m.content);}catch(e){addChatMessage("assistant",e.message);}}
 let historyMessages=[];
 function drawHistory(){const list=$("#history-list");if(!list)return;const term=($("#history-search")?.value||"").trim().toLowerCase();const filtered=historyMessages.filter(m=>!term||m.content.toLowerCase().includes(term));list.replaceChildren();if(!filtered.length){list.appendChild(node("p","muted",term?"Nenhum resultado para essa busca.":"Seu histórico ainda está vazio."));return;}for(const m of filtered.slice().reverse()){const item=node("article","history-item"),top=node("div","history-item-top"),role=node("strong","",m.role==="user"?"Você":"Nuvem"),date=node("small","",new Date(m.created_at).toLocaleString("pt-BR")),content=node("p","",m.content);top.append(role,date);item.append(top,content);list.appendChild(item);}}
 async function loadHistory(){const data=await api("/api/app/chat?limit=100");historyMessages=data.messages||[];drawHistory();}
 $("#history-search")?.addEventListener("input",drawHistory);
-async function sendChat(event){event.preventDefault();if(busy||!session)return;const input=$("#chat-input"),button=$("#chat-send"),text=input.value.trim();if(!text)return;if(text.length>4000){setApiStatus("#chat-status","Limite de 4000 caracteres por mensagem.",true);return;}busy=true;button.disabled=true;input.disabled=true;addChatMessage("user",text);input.value="";setApiStatus("#chat-status","A IA está pensando…");try{const result=await api("/api/app/chat",{method:"POST",body:JSON.stringify({content:text})});addChatMessage("assistant",result.message.content);setApiStatus("#chat-status","Mensagem salva no seu histórico.");await loadHistory();}catch(e){setApiStatus("#chat-status",e.message,true);addChatMessage("assistant","Não consegui concluir essa mensagem. "+e.message);}finally{busy=false;button.disabled=false;input.disabled=false;input.focus();}}
+async function sendChat(event){event.preventDefault();if(busy||!session)return;const input=$("#chat-input"),button=$("#chat-send"),text=input.value.trim();if(!text)return;if(text.length>4000){setApiStatus("#chat-status","Limite de 4000 caracteres por mensagem.",true);return;}busy=true;button.disabled=true;input.disabled=true;addChatMessage("user",text);input.value="";input.style.height="auto";setApiStatus("#chat-status","A Nuvem está pensando…");try{const result=await api("/api/app/chat",{method:"POST",body:JSON.stringify({content:text})});addChatMessage("assistant",result.message.content);setApiStatus("#chat-status","Resposta salva no seu histórico.");await loadHistory();}catch(e){setApiStatus("#chat-status",e.message,true);addChatMessage("assistant","Não consegui concluir essa mensagem. "+e.message);}finally{busy=false;button.disabled=false;input.disabled=false;input.focus();}}
 let allExpenses=[];
 let filteredExpenses=[];
 function getFilteredExpenses(expenses){
@@ -62,7 +62,7 @@ function drawExpenses(expenses){
 }
 async function loadExpenses(){const data=await api("/api/app/expenses");drawExpenses(data.expenses);}
 async function addExpense(event){event.preventDefault();if(!session)return;const description=$("#expense-description").value.trim(),amount=Number($("#expense-amount").value);const button=$("#expense-submit");button.disabled=true;setApiStatus("#expense-status","Salvando…");try{await api("/api/app/expenses",{method:"POST",body:JSON.stringify({description,amount,spent_at:$("#expense-date")?.value||new Date().toISOString().slice(0,10),category:$("#expense-category-input")?.value||"Outros"})});$("#expense-form").reset();if($("#expense-date"))$("#expense-date").value=localDateHoje();await loadExpenses();setApiStatus("#expense-status","Despesa salva com segurança.");}catch(e){setApiStatus("#expense-status",e.message,true);}finally{button.disabled=false;}}
-function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const expenseDate=$("#expense-date");if(expenseDate)expenseDate.disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable","#sticker-editor-file","#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size","#sticker-remove-bg","#sticker-add-pack","#sticker-send-current","#sticker-pack-name","#sticker-create-pack","#sticker-pack-select","#sticker-send-pack","#sticker-delete-pack","#sticker-video-file","#sticker-video-submit","#audio-file","#audio-submit","#audio-search-query","#audio-search-submit"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";setStickerEditorControls();}
+function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const expenseDate=$("#expense-date");if(expenseDate)expenseDate.disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable","#sticker-editor-file","#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size","#sticker-remove-bg","#sticker-add-pack","#sticker-send-current","#sticker-pack-name","#sticker-create-pack","#sticker-pack-select","#sticker-send-pack","#sticker-delete-pack","#sticker-video-file","#sticker-video-action","#sticker-video-submit","#audio-file","#audio-submit","#audio-search-query","#audio-search-submit"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";setStickerEditorControls();}
 async function loadProfile(){const data=await api("/api/app/me");const p=data.profile||{};$("#profile-name").value=p.display_name||"";$("#profile-assistant").value=p.assistant_name||"Nuvem";$("#profile-language").value=p.language||"pt-BR";$("#profile-style").value=p.response_style||"balanced";["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>$(s).disabled=false);setApiStatus("#profile-status","Preferências carregadas.");}
 async function saveProfile(event){event.preventDefault();if(!session)return;const button=$("#profile-save");button.disabled=true;setApiStatus("#profile-status","Salvando preferências…");try{await api("/api/app/me",{method:"PUT",body:JSON.stringify({display_name:$("#profile-name").value,assistant_name:$("#profile-assistant").value,language:$("#profile-language").value,response_style:$("#profile-style").value})});setApiStatus("#profile-status","Preferências salvas.");}catch(e){setApiStatus("#profile-status",e.message,true);}finally{button.disabled=false;}}
 $("#profile-form").addEventListener("submit",saveProfile);
@@ -289,7 +289,7 @@ function renderStickerPacks() {
 }
 function setStickerEditorControls() {
   const logged = Boolean(session?.access_token);
-  ["#sticker-editor-file","#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size","#sticker-remove-bg","#sticker-undo-bg","#sticker-create-pack","#sticker-pack-name","#sticker-pack-select","#sticker-video-file","#sticker-video-submit"].forEach(selector => {
+  ["#sticker-editor-file","#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size","#sticker-remove-bg","#sticker-undo-bg","#sticker-create-pack","#sticker-pack-name","#sticker-pack-select","#sticker-video-file","#sticker-video-action","#sticker-video-submit"].forEach(selector => {
     const el = $(selector);
     if (el) el.disabled = !logged;
   });
@@ -301,40 +301,52 @@ function drawImageContained(context, image, width, height) {
   const w = image.width * scale, h = image.height * scale;
   context.drawImage(image, (width - w) / 2, (height - h) / 2, w, h);
 }
-function removeUniformBackground(canvas, tolerance = 48) {
+function removeSmartBackground(canvas, tolerance = 42) {
   const context = canvas.getContext("2d", { willReadFrequently: true });
   const width = canvas.width, height = canvas.height;
   const image = context.getImageData(0, 0, width, height);
   const data = image.data, count = width * height;
-  let red = 0, green = 0, blue = 0, samples = 0;
-  const sample = (x, y) => {
-    const i = (y * width + x) * 4;
-    if (data[i + 3] < 16) return;
-    red += data[i]; green += data[i + 1]; blue += data[i + 2]; samples++;
+  const visited = new Uint8Array(count), queue = new Int32Array(count);
+  const dist = (a,b) => {
+    const dr=data[a]-data[b], dg=data[a+1]-data[b+1], db=data[a+2]-data[b+2];
+    return Math.sqrt(dr*dr*0.9 + dg*dg*1.15 + db*db*0.8);
   };
-  for (let x = 0; x < width; x += 8) { sample(x, 0); sample(x, height - 1); }
-  for (let y = 0; y < height; y += 8) { sample(0, y); sample(width - 1, y); }
-  if (!samples) return false;
-  red /= samples; green /= samples; blue /= samples;
-  const queue = new Int32Array(count);
-  const visited = new Uint8Array(count);
-  let head = 0, tail = 0;
-  const enqueue = index => { if (!visited[index]) { visited[index] = 1; queue[tail++] = index; } };
-  for (let x = 0; x < width; x++) { enqueue(x); enqueue((height - 1) * width + x); }
-  for (let y = 0; y < height; y++) { enqueue(y * width); enqueue(y * width + width - 1); }
-  while (head < tail) {
-    const pixel = queue[head++], i = pixel * 4;
-    if (data[i + 3] < 16) continue;
-    const dr = data[i] - red, dg = data[i + 1] - green, db = data[i + 2] - blue;
-    if (Math.sqrt(dr * dr + dg * dg + db * db) > tolerance) continue;
-    data[i + 3] = 0;
-    const x = pixel % width, y = (pixel / width) | 0;
-    if (x > 0) enqueue(pixel - 1);
-    if (x + 1 < width) enqueue(pixel + 1);
-    if (y > 0) enqueue(pixel - width);
-    if (y + 1 < height) enqueue(pixel + width);
+  const borderSamples=[];
+  const stride=4;
+  for(let x=0;x<width;x+=stride){borderSamples.push((x)*4,((height-1)*width+x)*4);}
+  for(let y=stride;y<height-stride;y+=stride){borderSamples.push((y*width)*4,(y*width+width-1)*4);}
+  if(!borderSamples.length)return false;
+  const edge=[0,0,0];for(const i of borderSamples){edge[0]+=data[i];edge[1]+=data[i+1];edge[2]+=data[i+2];}
+  edge[0]/=borderSamples.length;edge[1]/=borderSamples.length;edge[2]/=borderSamples.length;
+  const seeds=[];
+  for(const i of borderSamples){const d=Math.hypot(data[i]-edge[0],data[i+1]-edge[1],data[i+2]-edge[2]);if(d<115)seeds.push(i>>2);}
+  let head=0,tail=0;
+  const add=(p)=>{if(p>=0&&p<count&&!visited[p]){visited[p]=1;queue[tail++]=p;}};
+  for(const p of seeds)add(p);
+  const soft=[];
+  while(head<tail){
+    const p=queue[head++],i=p*4;
+    if(data[i+3]<8)continue;
+    const globalDistance=Math.hypot(data[i]-edge[0],data[i+1]-edge[1],data[i+2]-edge[2]);
+    const x=p%width,y=(p/width)|0;
+    let neighbourDistance=Infinity;
+    if(x>0)neighbourDistance=Math.min(neighbourDistance,dist(i,(p-1)*4));
+    if(x+1<width)neighbourDistance=Math.min(neighbourDistance,dist(i,(p+1)*4));
+    if(y>0)neighbourDistance=Math.min(neighbourDistance,dist(i,(p-width)*4));
+    if(y+1<height)neighbourDistance=Math.min(neighbourDistance,dist(i,(p+width)*4));
+    const threshold=tolerance+(globalDistance>65? -8:8);
+    if(globalDistance>142 || (globalDistance>90 && neighbourDistance>tolerance*1.65))continue;
+    if(globalDistance>threshold && neighbourDistance>tolerance)continue;
+    const alpha=data[i+3];
+    if(globalDistance<tolerance*0.72)data[i+3]=0;
+    else data[i+3]=Math.min(alpha,Math.max(0,Math.round(255*(globalDistance-tolerance*0.55)/(tolerance*0.9))));
+    soft.push(p);
+    if(x>0)add(p-1);if(x+1<width)add(p+1);if(y>0)add(p-width);if(y+1<height)add(p+width);
   }
-  context.putImageData(image, 0, 0);
+  if(!soft.length)return false;
+  // Remove the light/dark fringe left by antialiasing along the cut.
+  for(const p of soft){const i=p*4;if(data[i+3]===0)continue;const a=data[i+3]/255;if(a<0.92){data[i]=Math.max(0,Math.min(255,Math.round((data[i]-edge[0]*(1-a))/Math.max(a,0.08))));data[i+1]=Math.max(0,Math.min(255,Math.round((data[i+1]-edge[1]*(1-a))/Math.max(a,0.08))));data[i+2]=Math.max(0,Math.min(255,Math.round((data[i+2]-edge[2]*(1-a))/Math.max(a,0.08))));}}
+  context.putImageData(image,0,0);
   return true;
 }
 function renderStickerPreview() {
@@ -431,13 +443,16 @@ $("#sticker-editor-file")?.addEventListener("change", event => {
   if (file) readStickerFile(file);
 });
 ["#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size"].forEach(selector => $(selector)?.addEventListener("input", renderStickerPreview));
+$("#chat-input")?.addEventListener("input",event=>{event.target.style.height="auto";event.target.style.height=Math.min(event.target.scrollHeight,180)+"px";});
+$("#chat-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();$("#chat-form")?.requestSubmit();}});
+document.querySelectorAll("[data-prompt]").forEach(button=>button.addEventListener("click",()=>{const input=$("#chat-input");if(!input||input.disabled)return;input.value=button.dataset.prompt||"";input.focus();input.dispatchEvent(new Event("input",{bubbles:true}));}));
 $("#sticker-remove-bg")?.addEventListener("click", () => {
   if (!stickerOriginalCanvas) return;
   try {
     const edited = document.createElement("canvas");
     edited.width = edited.height = 512;
     edited.getContext("2d").drawImage(stickerOriginalCanvas, 0, 0);
-    if (!removeUniformBackground(edited, 48)) throw new Error("Não encontrei pixels de fundo para remover.");
+    if (!removeSmartBackground(edited, 42)) throw new Error("Não consegui identificar uma área de fundo conectada às bordas. Tente uma imagem com mais contraste.");
     stickerOriginalCanvas = edited;
     stickerBackgroundRemoved = true;
     $("#sticker-undo-bg").disabled = false;
@@ -525,10 +540,27 @@ $("#sticker-delete-pack")?.addEventListener("click", () => {
 });
 $("#sticker-video-form")?.addEventListener("submit", async event => {
   event.preventDefault();
-  const file = $("#sticker-video-file")?.files?.[0];
-  if (!file) return setApiStatus("#sticker-video-status", "Escolha um vídeo primeiro.", true);
-  if (identificarTipoArquivo(file) !== "video") return setApiStatus("#sticker-video-status", "Escolha um arquivo de vídeo compatível.", true);
-  await enviarArquivoParaDownload("/api/app/media/sticker-video", file, "#sticker-video-status", $("#sticker-video-submit"), "nuvem-figurinha-animada.webp", true);
+  const file=$("#sticker-video-file")?.files?.[0],button=$("#sticker-video-submit"),action=$("#sticker-video-action")?.value||"send";
+  if(!file)return setApiStatus("#sticker-video-status","Escolha um vídeo primeiro.",true);
+  if(identificarTipoArquivo(file)!=="video")return setApiStatus("#sticker-video-status","Escolha um arquivo de vídeo compatível.",true);
+  if(action==="pack"&&!selectedStickerPack())return setApiStatus("#sticker-video-status","Crie ou selecione um pacote antes de adicionar a animada.",true);
+  button.disabled=true;setApiStatus("#sticker-video-status","Convertendo vídeo em figurinha animada…");
+  try{
+    const response=await fetch("/api/app/media/sticker-video",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":file.type||"application/octet-stream"},body:file,cache:"no-store"});
+    if(!response.ok){let body={};try{body=await response.json()}catch{}throw new Error(body.error||"Não consegui converter o vídeo.");}
+    const blob=await response.blob();if(!blob.size)throw new Error("O servidor retornou uma figurinha vazia.");
+    if(action==="pack"){
+      if(blob.size>1_000_000)throw new Error("A animada passou de 1 MB e não pode ser guardada como figurinha.");
+      const pack=selectedStickerPack();if(!pack)throw new Error("Selecione um pacote novamente.");
+      if(pack.stickers.length>=MAX_STICKERS_PER_PACK)throw new Error("O pacote já atingiu o limite de 8 figurinhas.");
+      const dataUrl=await blobToDataUrl(blob);pack.stickers.push({id:(crypto.randomUUID?.()||String(Date.now())),dataUrl,caption:"Figurinha animada",animated:true});
+      if(!persistStickerPacks()){pack.stickers.pop();return;}
+      renderStickerPacks();setApiStatus("#sticker-video-status","✓ Figurinha animada adicionada ao pacote “"+pack.name+"”.");
+    }else{
+      await sendStickerBlob(blob);setApiStatus("#sticker-video-status","✓ Figurinha animada enviada individualmente ao WhatsApp.");
+    }
+  }catch(error){setApiStatus("#sticker-video-status",error.message||"Falha ao criar figurinha animada.",true);}
+  finally{button.disabled=!session?.access_token;}
 });
 
 $("#audio-form")?.addEventListener("submit", async event => {
