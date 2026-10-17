@@ -13,7 +13,7 @@ function aplicarTema(tema,persistir=true){
   const toggle=$("#theme-toggle"),icon=$("#theme-toggle-icon"),meta=$("#theme-color-meta");
   if(toggle){toggle.setAttribute("aria-label",isLight?"Ativar tema escuro":"Ativar tema claro");toggle.title=isLight?"Ativar tema escuro":"Ativar tema claro";toggle.setAttribute("aria-pressed",String(!isLight));}
   if(icon){icon.textContent=isLight?"☼":"☾";icon.style.display="inline-block";icon.style.fontSize="23px";}
-  if(meta)meta.setAttribute("content",isLight?"#f4f6fa":"#141a23");
+  if(meta)meta.setAttribute("content",isLight?"#f2f5f1":"#202827");
   document.querySelectorAll("[data-theme-choice]").forEach(button=>button.setAttribute("aria-checked",String(button.dataset.themeChoice===selecionado)));
 }
 let temaInicial="light";
@@ -295,8 +295,8 @@ async function sendChat(event){
     removeTypingIndicator();addChatMessage("assistant",result.message.content);setApiStatus("#chat-status","Resposta salva nesta conversa.");
     await Promise.all([loadHistory(),refreshChatList()]);
   }catch(e){
-    removeTypingIndicator();setApiStatus("#chat-status",e.message,true);
-    addChatMessage("assistant","Não consegui concluir essa mensagem. "+e.message);
+    removeTypingIndicator();input.value=text;input.style.height="auto";setApiStatus("#chat-status",e.message,true);
+    addChatMessage("assistant","Não consegui concluir essa mensagem. Seu texto foi mantido na caixa para você tentar novamente.");
   }finally{
     removeTypingIndicator();busy=false;button.disabled=!session;input.disabled=!session;input.focus();scrollChatToBottom(true);
   }
