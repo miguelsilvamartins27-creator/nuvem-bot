@@ -106,3 +106,41 @@ input:focus{outline:none;border-color:#777!important;box-shadow:0 0 0 3px #11111
 .export-choice-content p:not(.eyebrow),.export-choice-content small{color:#777!important}
 .export-choice-content .choice-cancel{color:#777!important}
 @media(max-width:640px){.studio-intro{border-radius:16px!important}.panel,.timeline-panel{border-radius:14px!important}}
+
+
+/* Responsive polish for Nuvem Studio */
+html,body{min-height:100%;overflow-x:hidden}
+.studio-topbar{min-height:64px!important;padding:10px clamp(12px,3vw,28px)!important;gap:12px!important}
+.studio-shell{width:min(1480px,100%)!important;padding:22px clamp(12px,3vw,30px) 34px!important}
+.studio-intro{padding:clamp(20px,3vw,36px)!important;margin-bottom:18px!important}
+.studio-intro h1{font-size:clamp(32px,4vw,50px)!important}
+.studio-workspace{gap:16px!important}
+.studio-sidebar{gap:14px!important}
+.panel,.timeline-panel{padding:clamp(13px,2vw,20px)!important}
+@media(max-width:760px){
+ .studio-topbar{position:sticky!important;top:0!important;z-index:50!important;display:flex!important;flex-wrap:wrap!important;min-height:56px!important;padding:8px 12px!important;background:rgba(245,244,240,.96)!important;backdrop-filter:blur(16px)!important}
+ .studio-brand{font-size:13px!important;gap:6px!important}
+ .studio-brand .brand-mark{width:27px!important;height:27px!important;font-size:18px!important}
+ .topbar-right{display:flex!important;align-items:center!important;gap:7px!important;min-width:0!important}
+ .auth-state{font-size:10px!important;max-width:100px!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ .back-link{font-size:10px!important;padding:7px 9px!important;white-space:nowrap!important}
+ .studio-shell{padding:12px 12px 24px!important}
+ .studio-intro{display:flex!important;align-items:center!important;gap:10px!important;padding:19px 16px!important;border-radius:16px!important}
+ .studio-intro h1{font-size:32px!important;line-height:1.08!important}
+ .intro-copy{font-size:12px!important;line-height:1.55!important}
+ .studio-symbol{width:54px!important;height:54px!important;min-width:54px!important;font-size:25px!important;border-radius:15px!important}
+ .studio-workspace{display:flex!important;flex-direction:column!important;gap:12px!important}
+ .studio-sidebar{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
+ .panel,.timeline-panel{border-radius:14px!important;padding:14px!important}
+ .waveform-wrap{height:120px!important;max-width:100%!important}
+ .player-row{gap:9px!important;flex-wrap:wrap!important}
+ .range-controls{padding:10px!important}
+ .range-controls input,.control-label input[type=number]{max-width:100%!important}
+ .export-choice-dialog{width:calc(100vw - 24px)!important;max-width:420px!important}
+}
+@media(max-width:390px){
+ .studio-brand .studio-divider,.studio-brand span:last-child{display:none!important}
+ .studio-intro h1{font-size:28px!important}
+ .studio-symbol{width:44px!important;height:44px!important;min-width:44px!important}
+ .studio-shell{padding-inline:9px!important}
+}
