@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="120" fill="#111111"/><path d="M96 355V157h62v29c17-23 42-36 73-36 34 0 59 16 72 42 19-27 47-42 80-42 54 0 89 36 89 96v109h-63V254c0-31-15-48-43-48-29 0-47 21-47 52v97h-62v-97c0-31-15-48-43-48-29 0-48 21-48 52v93z" fill="#ffffff" transform="translate(-18 0) scale(.94 1)"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Nuvem</title><desc id="desc">Nuvem estilizada com uma estrela, em tons de verde, azul e lilás.</desc>
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d9f0e6"/><stop offset=".52" stop-color="#cfe1ed"/><stop offset="1" stop-color="#ddd6f1"/></linearGradient>
+ <linearGradient id="cloud" x1=".1" y1="0" x2=".9" y2="1"><stop stop-color="#5da991"/><stop offset=".58" stop-color="#578fa0"/><stop offset="1" stop-color="#8d7bb8"/></linearGradient>
+</defs>
+<rect width="512" height="512" rx="124" fill="url(#bg)"/>
+<path d="M113 302c0-38 30-69 68-69 8-55 54-96 110-96 57 0 104 43 110 98 31 5 54 32 54 64 0 36-29 65-65 65H179c-36 0-66-27-66-62Z" fill="url(#cloud)"/>
+<path d="m367 91 13 29 30 13-30 13-13 30-13-30-30-13 30-13z" fill="#8d7bb8"/>
+<circle cx="164" cy="374" r="10" fill="#5da991" opacity=".75"/>
+</svg>
