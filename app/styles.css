@@ -181,3 +181,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .media-result-link:hover{text-decoration:underline}
 @keyframes chat-enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:760px){.chat-messages{min-height:260px;max-height:52vh;padding:16px}.chat-message{max-width:94%;font-size:13px}.chat-form{margin:0 12px}.chat-bottom{padding:0 12px}.chat-bottom>span{display:none}}
+
+.media-audio-player{display:block;width:100%;max-width:100%;margin:12px 0 8px;min-height:38px;accent-color:var(--accent,#b7ff3a)}
+.media-result{min-width:0;overflow:hidden}
+.media-result-details{display:grid;gap:5px}
+.media-result-details strong{overflow-wrap:anywhere}
