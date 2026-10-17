@@ -10,3 +10,5 @@
 .export-choice-content .choice-cancel{border:0;background:transparent;color:#9ca6a4;font-size:12px;cursor:pointer}
 .export-choice-content small{color:#87918e;font-size:10px;line-height:1.6}
 @media(max-width:500px){.export-choice-content{padding:20px}.export-choice-content h2{font-size:21px}}
+
+#send-whatsapp[hidden]{display:none!important}
