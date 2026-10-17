@@ -9,9 +9,11 @@ create table if not exists public.app_reminders (
   remind_date date,
   active boolean not null default true,
   last_notified_at timestamptz,
+  last_notified_key text,
   created_at timestamptz not null default now(),
   constraint app_reminders_date_rule check (repeat_daily or remind_date is not null)
 );
+alter table public.app_reminders add column if not exists last_notified_key text;
 create index if not exists app_reminders_user_created_idx on public.app_reminders(user_id, created_at desc);
 create index if not exists app_reminders_active_time_idx on public.app_reminders(active, remind_at);
 alter table public.app_reminders enable row level security;
