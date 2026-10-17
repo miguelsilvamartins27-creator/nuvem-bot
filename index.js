@@ -1864,7 +1864,7 @@ async function gerarAnaliseVisaoInterna({
                 0.4,
 
             maxTokens:
-                1024
+                900
         });
 
     return {
