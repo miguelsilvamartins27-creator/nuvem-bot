@@ -47,7 +47,7 @@ function saveExerciseFolders(){
 }
 function switchFitSubpage(name){
   document.querySelectorAll(".fit-subview").forEach(el=>el.classList.toggle("active",el.id==="fit-subview-"+name));
-  document.querySelectorAll("[data-fit-tab]").forEach(el=>el.classList.toggle("active",el.dataset.fitTab===name));
+  document.querySelectorAll("[data-fit-tab]").forEach(el=>el.classList.toggle("active",el.dataset.fitTab===(name==="folder-detail"?"folders":name)));
   const area=$("#view-fit");if(area)area.scrollIntoView({behavior:"smooth",block:"start"});
 }
 document.querySelectorAll("[data-fit-tab]").forEach(button=>button.addEventListener("click",()=>switchFitSubpage(button.dataset.fitTab)));
@@ -118,7 +118,7 @@ function showExerciseDetail(exercise){
   const cues=Array.isArray(exercise.cues)?exercise.cues:[];if(cues.length){instructions.appendChild(node("h4","","Pontos de atenção"));const list=document.createElement("ul");for(const cue of cues)list.appendChild(node("li","",String(cue)));instructions.appendChild(list);}
   const targets=[...(exercise.targetMuscles||[]),...(exercise.secondaryMuscles||[])].filter(Boolean);if(targets.length)instructions.appendChild(node("p","exercise-card-meta","Músculos indicados pela base: "+targets.join(", ")));
   layout.append(visual,instructions);area.append(top,layout);
-  const actions=node("div","exercise-detail-actions"),add=node("button","button button-primary","＋ Guardar nesta pasta");add.type="button";add.addEventListener("click",()=>addExerciseToCurrentFolder(exercise));actions.appendChild(add);area.appendChild(actions);area.hidden=false;area.scrollIntoView({behavior:"smooth",block:"nearest"});
+  const folder=exerciseFolders.find(item=>item.id===currentExerciseFolderId),alreadySaved=!!folder&&folder.exercises.some(item=>String(item.id||item.name).toLowerCase()===String(exercise.id||exercise.name).toLowerCase()||item.name===exercise.name);const actions=node("div","exercise-detail-actions"),add=node("button","button button-primary",alreadySaved?"＋ Adicionar ao meu treino":"＋ Guardar nesta pasta");add.type="button";add.addEventListener("click",()=>{if(!alreadySaved)return addExerciseToCurrentFolder(exercise);addExerciseRow({name:exercise.displayName||exercise.name,sets:3,reps:"8–12"});if(!$("#fit-title").value.trim())$("#fit-title").value="Treino do dia";setApiStatus("#fit-status","✓ "+(exercise.displayName||exercise.name)+" adicionado à sessão.");switchFitSubpage("builder");});actions.appendChild(add);area.appendChild(actions);area.hidden=false;area.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 async function searchExercises(query){
   const search=String(query||"").trim();if(!search)return setApiStatus("#exercise-search-status","Digite um exercício ou escolha uma pesquisa popular.",true);
