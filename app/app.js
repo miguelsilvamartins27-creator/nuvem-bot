@@ -717,7 +717,7 @@ function desenharResultadosAudio(results) {
     if (url.protocol !== "https:" || !(url.hostname === "upload.wikimedia.org" || url.hostname === "archive.org")) continue;
     const card = node("article", "media-result");
     const details = node("div", "media-result-details");
-    details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "", item.source || "Fonte aberta"));
+    details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "", item.source || "Fonte aberta"), node("small", "muted", "Licença: " + (item.license || "confira na fonte")));
     const player = node("audio", "media-audio-player");
     player.controls = true;
     player.preload = "none";
@@ -742,7 +742,7 @@ $("#audio-search-form")?.addEventListener("submit", async event => {
   const button = $("#audio-search-submit");
   if (!query) return setApiStatus("#audio-search-status", "Digite o que deseja encontrar.", true);
   button.disabled = true;
-  setApiStatus("#audio-search-status", "Pesquisando fontes abertas…");
+  setApiStatus("#audio-search-status", "Pesquisando em várias fontes abertas…");
   $("#audio-search-results")?.replaceChildren();
   try {
     const result = await api("/api/app/media/search-audio", { method: "POST", body: JSON.stringify({ query }) });
