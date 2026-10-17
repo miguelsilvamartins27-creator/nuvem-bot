@@ -1,0 +1,42 @@
+name: Lembretes da Nuvem
+
+on:
+  schedule:
+    # O GitHub pode atrasar execuções agendadas; não é um relógio exato.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nuvem-lembretes-push
+  cancel-in-progress: false
+
+jobs:
+  send-reminders:
+    name: Enviar notificações pendentes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependências do worker
+        working-directory: push-worker
+        run: npm install --no-audit --no-fund
+
+      - name: Processar lembretes
+        working-directory: push-worker
+        run: npm start
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
