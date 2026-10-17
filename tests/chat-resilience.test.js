@@ -13,6 +13,7 @@ describe('Nuvem AI chat reliability and responsive design', () => {
     const api = await fs.readFile(apiUrl, 'utf8');
     assert.ok(api.includes("const LEGACY_CHAT_ID = 'legacy-chat'"));
     assert.ok(api.includes('function isMissingChatSchema(error)'));
+    assert.ok(api.includes("app.get('/api/app/session', requireUser"));
     assert.ok(api.includes("return res.json({ chats: [{ id: LEGACY_CHAT_ID, title: 'Conversa principal' }], legacy: true })"));
     assert.ok(api.includes('const legacyMode = conversationId === LEGACY_CHAT_ID'));
     assert.ok(api.includes("userMessage.conversation_id = conversationId"));
@@ -39,6 +40,7 @@ describe('Nuvem AI chat reliability and responsive design', () => {
     assert.ok(css.includes('--nuvem-accent:#9abcf4'));
     assert.ok(css.includes('.app-shell .mobile-nav{display:grid!important}'));
     assert.ok(css.includes('.app-shell img,.app-shell video,.app-shell canvas'));
+    assert.ok(css.includes('.app-shell .audio-result-media img'));
     assert.ok(css.includes('#view-ia .chat-form textarea'));
     assert.ok(sw.includes('nuvem-shell-v33'));
     assert.ok(sw.includes('/app/polish.css?v=3'));
