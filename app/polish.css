@@ -1,23 +1,23 @@
 /* NUVEM REMASTER — coherent colors, accessible surfaces and responsive layouts */
 :root{
   color-scheme:light;
-  --n-bg:#f2f5f1;
-  --n-panel:#fbfcf9;
-  --n-raised:#ffffff;
-  --n-soft:#e9efea;
-  --n-soft-2:#e0e9e3;
-  --n-line:#d6e0d9;
-  --n-text:#293b34;
-  --n-muted:#64766d;
-  --n-accent:#397e70;
-  --n-accent-hover:#2f6c60;
-  --n-accent-ink:#f7fbf8;
-  --n-lilac:#8877b8;
-  --n-lilac-soft:#efebf7;
-  --n-good:#34745a;
-  --n-warn:#8a682f;
-  --n-danger:#a64d51;
-  --n-shadow:0 12px 32px rgba(43,69,55,.07);
+  --n-bg:#e8e6de;
+  --n-panel:#efede6;
+  --n-raised:#e7e4dc;
+  --n-soft:#dfded4;
+  --n-soft-2:#d5d9cd;
+  --n-line:#d0d1c6;
+  --n-text:#4a554b;
+  --n-muted:#788075;
+  --n-accent:#6d8f7e;
+  --n-accent-hover:#5f7f70;
+  --n-accent-ink:#f0eee6;
+  --n-lilac:#8d83a9;
+  --n-lilac-soft:#e4e0eb;
+  --n-good:#63856f;
+  --n-warn:#947b53;
+  --n-danger:#a66f6c;
+  --n-shadow:0 12px 32px rgba(67,76,63,.055);
   --n-radius:18px;
   --bg:var(--n-bg);--panel:var(--n-panel);--line:var(--n-line);
   --text:var(--n-text);--muted:var(--n-muted);--accent:var(--n-accent);
@@ -26,11 +26,11 @@
 }
 html[data-theme="dark"]{
   color-scheme:dark;
-  --n-bg:#202827;--n-panel:#28312f;--n-raised:#303b38;--n-soft:#34413c;
-  --n-soft-2:#3d4a44;--n-line:#46564e;--n-text:#e1e9e3;--n-muted:#b0beb5;
-  --n-accent:#8dc5b5;--n-accent-hover:#a1d4c5;--n-accent-ink:#20342d;
-  --n-lilac:#c2b4e8;--n-lilac-soft:#40394f;--n-good:#9ad4b3;--n-warn:#e5c58a;
-  --n-danger:#f0a6a5;--n-shadow:0 14px 38px rgba(8,15,12,.18);
+  --n-bg:#292e2b;--n-panel:#313833;--n-raised:#383f39;--n-soft:#3a433b;
+  --n-soft-2:#444c43;--n-line:#4a554a;--n-text:#d3d8cd;--n-muted:#adb4a7;
+  --n-accent:#9bb8a4;--n-accent-hover:#b0c8b6;--n-accent-ink:#2b342d;
+  --n-lilac:#b7adc9;--n-lilac-soft:#413d49;--n-good:#a2c0a5;--n-warn:#d0ba91;
+  --n-danger:#d5a09a;--n-shadow:0 14px 38px rgba(12,17,13,.12);
   --bg:var(--n-bg);--panel:var(--n-panel);--line:var(--n-line);
   --text:var(--n-text);--muted:var(--n-muted);--accent:var(--n-accent);
   --accent-soft:var(--n-soft);--surface:var(--n-raised);
@@ -357,3 +357,29 @@ button[hidden]{display:none!important}
 #view-ia .typing-dot:nth-child(3){animation-delay:.24s}
 @keyframes nuvemTyping{0%,60%,100%{opacity:.35;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 @media(max-width:760px){#view-ia .ai-profile-orb>img{width:100%;height:100%}#view-ia .message-actions{margin-top:6px}}
+
+
+/* Nuvem Soft UI — tons suaves, sem superfícies brancas ou pretas agressivas. */
+:root{--n-bg:#e8e6de;--n-panel:#efede6;--n-raised:#e7e4dc;--n-soft:#dfded4;--n-soft-2:#d5d9cd;--n-line:#d0d1c6;--n-text:#4a554b;--n-muted:#788075;--n-accent:#6d8f7e;--n-accent-hover:#5f7f70;--n-accent-ink:#f0eee6;--n-shadow:0 12px 32px rgba(67,76,63,.055)}
+html[data-theme="dark"]{--n-bg:#292e2b;--n-panel:#313833;--n-raised:#383f39;--n-soft:#3a433b;--n-soft-2:#444c43;--n-line:#4a554a;--n-text:#d3d8cd;--n-muted:#adb4a7;--n-accent:#9bb8a4;--n-accent-hover:#b0c8b6;--n-accent-ink:#2b342d;--n-shadow:0 14px 38px rgba(12,17,13,.12)}
+body,.login-screen,.login-card,.panel,.feature-card,.settings-card,.chat-layout{color:var(--n-text)!important}
+input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]),textarea,select{background:var(--n-raised)!important;color:var(--n-text)!important}
+#view-ia .ai-profile-orb,#view-ia .assistant-avatar{background:linear-gradient(145deg,#d8e2d5,#dcd7e4)!important;color:#5d7967!important}
+html[data-theme="dark"] #view-ia .ai-profile-orb,html[data-theme="dark"] #view-ia .assistant-avatar{background:linear-gradient(145deg,#46564a,#4b4556)!important;color:#c8d5c5!important}
+#view-ia .ai-avatar-core{background:transparent!important;color:inherit!important;font-size:21px!important}
+#view-ia .ai-profile-orb .robot-mark{font-size:23px;line-height:1}
+#view-ia .assistant-message-head{display:flex;align-items:center;gap:7px;margin:0 0 7px;font-size:11px;font-weight:750;color:var(--n-accent)!important}
+#view-ia .assistant-robot{display:inline-grid;place-items:center;width:25px;height:25px;border:1px solid var(--n-line);border-radius:9px;background:var(--n-soft);font-size:15px;line-height:1}
+#view-ia .assistant-name{letter-spacing:.01em}
+#view-ia .typing-head{display:flex;align-items:center;gap:8px;min-height:31px;color:var(--n-muted)!important;font-size:12px}
+#view-ia .typing-robot{display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border:1px solid var(--n-line);border-radius:11px;background:var(--n-soft);font-size:17px;animation:nuvemRobotFloat 1.5s ease-in-out infinite}
+#view-ia .typing-label{font-weight:650;color:var(--n-accent)!important}
+#view-ia .typing-indicator{display:flex;align-items:center;gap:4px;margin-left:2px}
+#view-ia .typing-dot{width:5px;height:5px;background:var(--n-accent);animation:nuvemTyping 1s infinite ease-in-out}
+#view-ia .typing-dot:nth-child(2){animation-delay:.12s}
+#view-ia .typing-dot:nth-child(3){animation-delay:.24s}
+@keyframes nuvemRobotFloat{0%,100%{transform:translateY(0) rotate(0);box-shadow:0 0 0 0 color-mix(in srgb,var(--n-accent) 0%,transparent)}50%{transform:translateY(-3px) rotate(-3deg);box-shadow:0 0 0 5px color-mix(in srgb,var(--n-accent) 10%,transparent)}}
+#view-ia .typing-message{padding:3px 0!important}
+#view-ia .typing-message .message-content{display:flex;align-items:center;min-height:35px}
+#view-ia .message-actions{padding-left:32px}
+@media(max-width:760px){#view-ia .assistant-message-head{margin-bottom:5px;font-size:10px}#view-ia .assistant-robot{width:22px;height:22px;border-radius:8px;font-size:13px}#view-ia .typing-head{gap:7px;font-size:11px}#view-ia .typing-robot{width:27px;height:27px;flex-basis:27px}}
