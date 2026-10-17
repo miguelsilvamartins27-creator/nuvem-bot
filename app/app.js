@@ -195,7 +195,7 @@ function drawExpenses(expenses){
 }
 async function loadExpenses(){const data=await api("/api/app/expenses");drawExpenses(data.expenses);}
 async function addExpense(event){event.preventDefault();if(!session)return;const description=$("#expense-description").value.trim(),amount=Number($("#expense-amount").value);const button=$("#expense-submit");button.disabled=true;setApiStatus("#expense-status","Salvando…");try{await api("/api/app/expenses",{method:"POST",body:JSON.stringify({description,amount,spent_at:$("#expense-date")?.value||new Date().toISOString().slice(0,10),category:$("#expense-category-input")?.value||"Outros"})});$("#expense-form").reset();if($("#expense-date"))$("#expense-date").value=localDateHoje();await loadExpenses();setApiStatus("#expense-status","Despesa salva com segurança.");}catch(e){setApiStatus("#expense-status",e.message,true);}finally{button.disabled=false;}}
-function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const expenseDate=$("#expense-date");if(expenseDate)expenseDate.disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable","#fit-title","#fit-date","#fit-kind","#fit-notes","#fit-add-exercise","#fit-save","#fit-ai-question","#fit-ai-submit","#meal-ai-question","#meal-ai-submit","#meal-title","#meal-date","#meal-kind","#meal-notes","#meal-add-food","#meal-save","#meal-photo","#meal-photo-submit","#sticker-editor-file","#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size","#sticker-remove-bg","#sticker-add-pack","#sticker-send-current","#sticker-pack-name","#sticker-create-pack","#sticker-pack-select","#sticker-send-pack","#sticker-delete-pack","#sticker-video-file","#sticker-video-action","#sticker-video-submit","#audio-file","#audio-submit","#audio-search-query","#audio-search-submit"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";setStickerEditorControls();}
+function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const expenseDate=$("#expense-date");if(expenseDate)expenseDate.disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable","#fit-title","#fit-date","#fit-kind","#fit-notes","#fit-add-exercise","#fit-save","#fit-ai-question","#fit-ai-submit","#meal-ai-question","#meal-ai-submit","#meal-title","#meal-date","#meal-kind","#meal-notes","#meal-add-food","#meal-save","#meal-photo","#meal-photo-submit","#sticker-editor-file","#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size","#sticker-remove-bg","#sticker-add-pack","#sticker-send-current","#sticker-pack-name","#sticker-create-pack","#sticker-pack-select","#sticker-send-pack","#sticker-delete-pack","#sticker-video-file","#sticker-video-action","#sticker-video-submit","#audio-file","#audio-submit","#audio-search-query","#audio-search-submit","#audio-editor-file","#audio-trim-start","#audio-trim-end","#audio-trim-submit"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";setStickerEditorControls();}
 async function loadProfile(){const data=await api("/api/app/me");const p=data.profile||{};$("#profile-name").value=p.display_name||"";$("#profile-assistant").value=p.assistant_name||"Nuvem";$("#profile-language").value=p.language||"pt-BR";$("#profile-style").value=p.response_style||"balanced";["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>$(s).disabled=false);setApiStatus("#profile-status","Preferências carregadas.");}
 async function saveProfile(event){event.preventDefault();if(!session)return;const button=$("#profile-save");button.disabled=true;setApiStatus("#profile-status","Salvando preferências…");try{await api("/api/app/me",{method:"PUT",body:JSON.stringify({display_name:$("#profile-name").value,assistant_name:$("#profile-assistant").value,language:$("#profile-language").value,response_style:$("#profile-style").value})});setApiStatus("#profile-status","Preferências salvas.");}catch(e){setApiStatus("#profile-status",e.message,true);}finally{button.disabled=false;}}
 $("#profile-form").addEventListener("submit",saveProfile);
@@ -703,36 +703,56 @@ $("#audio-form")?.addEventListener("submit", async event => {
   if (!["video", "audio"].includes(identificarTipoArquivo(file))) return setApiStatus("#audio-status", "Formato não reconhecido. Escolha MP3, WAV, M4A, MP4, MOV ou WEBM.", true);
   await enviarArquivoParaDownload("/api/app/media/audio", file, "#audio-status", $("#audio-submit"), "nuvem-audio.mp3");
 });
+let audioEditBlob = null;
+let audioEditObjectUrl = "";
 function desenharResultadosAudio(results) {
   const area = $("#audio-search-results");
   if (!area) return;
   area.replaceChildren();
   if (!results.length) {
-    area.appendChild(node("p", "muted", "Nenhum áudio com licença aberta foi encontrado. Tente outro termo ou pesquise em inglês."));
+    area.appendChild(node("p", "muted", "Não apareceu resultado nesta tentativa. Tente outro termo, o nome do artista ou uma descrição em inglês."));
     return;
   }
   for (const item of results) {
     let url;
     try { url = new URL(item.url); } catch { continue; }
-    if (url.protocol !== "https:" || !(url.hostname === "upload.wikimedia.org" || url.hostname === "archive.org")) continue;
+    if (url.protocol !== "https:") continue;
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    const trusted = ["youtube.com","m.youtube.com","music.youtube.com","youtu.be","youtube-nocookie.com","soundcloud.com","m.soundcloud.com","upload.wikimedia.org","archive.org"].includes(host);
+    if (!trusted) continue;
     const card = node("article", "media-result");
     const details = node("div", "media-result-details");
-    details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "", item.source || "Fonte aberta"), node("small", "muted", "Licença: " + (item.license || "confira na fonte")));
-    const player = node("audio", "media-audio-player");
-    player.controls = true;
-    player.preload = "none";
-    player.src = url.href;
-    player.setAttribute("aria-label", "Reproduzir " + (item.title || "áudio"));
-    player.addEventListener("error", () => {
-      const note = node("small", "muted", "Este arquivo não pôde ser reproduzido aqui. Use o link para abrir a fonte.");
-      if (!card.contains(note)) card.appendChild(note);
-    }, { once: true });
-    const link = node("a", "media-result-link", "Abrir ou salvar áudio ↗");
+    details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "", item.source || "Fonte"), node("small", "muted", "Uso: " + (item.license || "consulte a plataforma original")));
+    card.appendChild(details);
+    if (item.embedUrl) {
+      try {
+        const embed = new URL(item.embedUrl);
+        if (embed.protocol === "https:" && embed.hostname === "www.youtube-nocookie.com" && /^\/embed\/[\w-]{11}$/.test(embed.pathname)) {
+          const frame = document.createElement("iframe");
+          frame.className = "audio-result-embed";
+          frame.src = embed.href;
+          frame.title = "Prévia: " + (item.title || "resultado de áudio");
+          frame.loading = "lazy";
+          frame.referrerPolicy = "strict-origin-when-cross-origin";
+          frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+          frame.allowFullscreen = true;
+          card.appendChild(frame);
+        }
+      } catch {}
+    } else if (["upload.wikimedia.org","archive.org"].includes(host)) {
+      const player = node("audio", "media-audio-player");
+      player.controls = true;
+      player.preload = "none";
+      player.src = url.href;
+      player.setAttribute("aria-label", "Reproduzir " + (item.title || "áudio"));
+      card.appendChild(player);
+    }
+    const link = node("a", "media-result-link", "Abrir na fonte ↗");
     link.href = url.href;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
-    link.setAttribute("aria-label", "Abrir " + (item.title || "áudio") + " em nova aba");
-    card.append(details, player, link);
+    link.setAttribute("aria-label", "Abrir " + (item.title || "áudio") + " na fonte original");
+    card.appendChild(link);
     area.appendChild(card);
   }
 }
@@ -742,17 +762,64 @@ $("#audio-search-form")?.addEventListener("submit", async event => {
   const button = $("#audio-search-submit");
   if (!query) return setApiStatus("#audio-search-status", "Digite o que deseja encontrar.", true);
   button.disabled = true;
-  setApiStatus("#audio-search-status", "Pesquisando em várias fontes abertas…");
+  setApiStatus("#audio-search-status", "Buscando no YouTube, SoundCloud e arquivos de áudio abertos. Isso pode levar alguns segundos…");
   $("#audio-search-results")?.replaceChildren();
   try {
     const result = await api("/api/app/media/search-audio", { method: "POST", body: JSON.stringify({ query }) });
     desenharResultadosAudio(result.results || []);
-    setApiStatus("#audio-search-status", result.results?.length ? result.notice || "Pesquisa concluída." : "Pesquisa concluída sem resultados.");
+    setApiStatus("#audio-search-status", result.notice || (result.results?.length ? "Pesquisa concluída." : "Nenhum resultado encontrado."));
   } catch (error) {
     setApiStatus("#audio-search-status", error.message, true);
-  } finally {
-    button.disabled = !session;
-  }
+  } finally { button.disabled = !session; }
+});
+document.querySelectorAll("[data-audio-query]").forEach(button => button.addEventListener("click", () => {
+  const input = $("#audio-search-query");
+  if (!input || !session) return;
+  input.value = button.dataset.audioQuery || "";
+  $("#audio-search-form")?.requestSubmit();
+}));
+$("#audio-editor-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const file = $("#audio-editor-file")?.files?.[0];
+  const start = Number($("#audio-trim-start")?.value);
+  const end = Number($("#audio-trim-end")?.value);
+  const button = $("#audio-trim-submit");
+  if (!file) return setApiStatus("#audio-editor-status", "Escolha um arquivo de áudio ou vídeo.", true);
+  if (!["audio","video"].includes(identificarTipoArquivo(file))) return setApiStatus("#audio-editor-status", "Formato não reconhecido. Escolha um arquivo de áudio ou vídeo comum.", true);
+  if (file.size > 12*1024*1024) return setApiStatus("#audio-editor-status", "O limite do arquivo é 12 MB.", true);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > 600 || end-start > 180) return setApiStatus("#audio-editor-status", "O início e o fim devem ser válidos. O corte pode ter até 3 minutos.", true);
+  button.disabled = true;
+  setApiStatus("#audio-editor-status", "Cortando o trecho e convertendo para MP3…");
+  try {
+    const response = await fetch("/api/app/media/audio/trim?start="+encodeURIComponent(start)+"&end="+encodeURIComponent(end), {
+      method:"POST", headers:{Authorization:"Bearer "+session.access_token,"Content-Type":file.type||"application/octet-stream"}, body:file, cache:"no-store"
+    });
+    if (!response.ok) { let body={}; try { body=await response.json(); } catch {} throw new Error(body.error || "Não foi possível cortar o áudio (erro "+response.status+")."); }
+    audioEditBlob = await response.blob();
+    if (!audioEditBlob.size) throw new Error("O áudio cortado ficou vazio.");
+    if (audioEditObjectUrl) URL.revokeObjectURL(audioEditObjectUrl);
+    audioEditObjectUrl = URL.createObjectURL(audioEditBlob);
+    $("#audio-editor-player").src = audioEditObjectUrl;
+    $("#audio-editor-download").href = audioEditObjectUrl;
+    $("#audio-editor-preview").hidden = false;
+    $("#audio-send-whatsapp").disabled = !session;
+    setApiStatus("#audio-editor-status", "Trecho pronto! Ouça, baixe o MP3 ou envie para o WhatsApp conectado.");
+  } catch(error) {
+    setApiStatus("#audio-editor-status", error.message || "Falha ao cortar o áudio.", true);
+  } finally { button.disabled = !session; }
+});
+$("#audio-send-whatsapp")?.addEventListener("click", async () => {
+  if (!session?.access_token || !audioEditBlob) return setApiStatus("#audio-editor-status", "Corte um áudio antes de enviar.", true);
+  const button=$("#audio-send-whatsapp");
+  button.disabled=true;
+  setApiStatus("#audio-editor-status","Enviando áudio para o WhatsApp conectado…");
+  try {
+    const response=await fetch("/api/app/media/audio/send",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"audio/mpeg"},body:audioEditBlob,cache:"no-store"});
+    let body={}; try { body=await response.json(); } catch {}
+    if(!response.ok) throw new Error(body.error || "Não foi possível enviar o áudio.");
+    setApiStatus("#audio-editor-status",body.message || "Áudio enviado ao WhatsApp.");
+  } catch(error) { setApiStatus("#audio-editor-status",error.message || "Falha no envio.",true); }
+  finally { button.disabled=!session || !audioEditBlob; }
 });
 
 function localDateHoje(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
