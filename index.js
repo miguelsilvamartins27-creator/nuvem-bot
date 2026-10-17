@@ -126,6 +126,7 @@ const app =
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '32kb', type: 'application/json' }));
+app.get(/^\/app\/?$/, (req, res) => res.sendFile(path.resolve('app/index.html')));
 app.use('/app', express.static(path.resolve('app'), { index: 'index.html', dotfiles: 'deny', maxAge: '1h' }));
 montarAppPessoal(app, {
     getSupabase: () => supabase,
