@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#e8e6de" id="theme-color-meta"><meta name="description" content="Seu espaço pessoal de IA, mídia e organização.">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Nuvem">
-<link rel="manifest" href="./manifest.webmanifest"><script>try{document.documentElement.dataset.theme=localStorage.getItem("nuvem-theme")||"light"}catch{document.documentElement.dataset.theme="dark"}</script><link rel="stylesheet" href="./styles.css?v=27"><link rel="stylesheet" href="./productivity.css?v=2"><link rel="stylesheet" href="./polish.css?v=5"><title>Nuvem — seu espaço pessoal</title>
+<link rel="manifest" href="./manifest.webmanifest"><script>try{document.documentElement.dataset.theme=localStorage.getItem("nuvem-theme")||"light"}catch{document.documentElement.dataset.theme="dark"}</script><link rel="stylesheet" href="./styles.css?v=27"><link rel="stylesheet" href="./productivity.css?v=2"><link rel="stylesheet" href="./polish.css?v=6"><title>Nuvem — seu espaço pessoal</title>
 </head>
 <body>
 <div id="login-screen" class="login-screen"><form id="login-form" class="login-card"><span class="brand-mark login-mark"><img src="./icon.svg" alt="" aria-hidden="true"></span><p class="eyebrow">ACESSO PRIVADO</p><h1>Bem-vindo à Nuvem.</h1><p class="lead">Entre com a conta autorizada para acessar seu espaço pessoal.</p><label>E-mail<input id="login-email" type="email" autocomplete="username" required placeholder="Seu e-mail"></label><label>Senha<input id="login-password" type="password" autocomplete="current-password" required minlength="8" placeholder="Sua senha"></label><button class="button button-primary login-submit" id="login-submit" type="submit">Entrar com segurança</button><p id="login-status" class="form-footnote" role="status">Carregando autenticação segura…</p></form></div>
@@ -57,7 +57,7 @@
 <section class="view wellness-view" id="view-fit">
   <div class="wellness-hero fit-hero"><div><p class="eyebrow">NUVEM LIFE · ÁREA FIT</p><h1>Seu espaço de treino.</h1><p class="lead">Primeiro organize seus exercícios em pastas. Depois monte seus treinos usando o que guardou.</p></div><div class="wellness-orb">✦</div></div>
   <nav class="fit-workspace-nav" aria-label="Seções da Área Fit">
-    <button type="button" class="fit-tab active" data-fit-tab="folders">📁 Minhas pastas</button>
+    <button type="button" class="fit-tab active" data-fit-tab="folders"><svg class="nuvem-folder-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5zM3.5 10h17"/></svg>Minhas pastas</button>
     <button type="button" class="fit-tab" data-fit-tab="builder">＋ Montar treino</button>
     <button type="button" class="fit-tab" data-fit-tab="history">▤ Meus treinos</button>
     <button type="button" class="fit-tab" data-fit-tab="coach">✦ Ajuda da IA</button>
@@ -65,7 +65,7 @@
   <section class="fit-subview active" id="fit-subview-folders">
     <div class="fit-page-heading"><div><p class="eyebrow">PASSO 1 · ORGANIZE</p><h2>Crie suas pastas</h2><p class="muted">Crie pastas por grupo muscular, dia da semana ou objetivo. Abra uma pasta para pesquisar e guardar exercícios nela.</p></div></div>
     <form id="exercise-folder-form" class="panel exercise-folder-form"><label>Nome da nova pasta<input id="exercise-folder-name" type="text" maxlength="60" placeholder="Ex.: Peito e tríceps, Treino A, Costas…" required></label><button type="submit" class="button button-primary">＋ Criar pasta</button><p id="exercise-folder-status" class="form-footnote" role="status">As pastas ficam salvas neste navegador.</p></form>
-    <div id="exercise-folder-list" class="exercise-folder-list"><div class="exercise-library-empty"><span>📁</span><strong>Suas pastas começam aqui</strong><small>Crie sua primeira pasta e depois adicione os exercícios que quiser.</small></div></div>
+    <div id="exercise-folder-list" class="exercise-folder-list"><div class="exercise-library-empty"><span class="exercise-folder-mark"><svg class="nuvem-folder-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5zM3.5 10h17"/></svg></span><strong>Suas pastas começam aqui</strong><small>Crie sua primeira pasta e depois adicione os exercícios que quiser.</small></div></div>
     <div class="wellness-note"><strong>Como funciona?</strong><p>1. Crie uma pasta. 2. Abra-a. 3. Pesquise pelo nome popular do exercício. 4. Veja a demonstração e salve o exercício na pasta.</p></div>
   </section>
   <section class="fit-subview" id="fit-subview-folder-detail">
@@ -113,11 +113,11 @@
 <section class="view" id="view-ia">
   <div class="ai-remaster-hero">
     <div><p class="eyebrow">SEU ESPAÇO DE IA</p><h1>Vamos pensar juntos?</h1><p class="lead">Escreva, aprenda, planeje e explore ideias em uma conversa que acompanha seu raciocínio.</p></div>
-    <div class="ai-hero-orbit ai-hero-robot" aria-hidden="true"><span>🤖</span><i></i><i></i></div>
+    <div class="ai-hero-orbit ai-hero-robot" aria-hidden="true"><svg class="nuvem-robot-svg ai-robot-large" viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v2"/><circle cx="12" cy="2.7" r="1" fill="currentColor" stroke="none"/><rect x="4.2" y="6" width="15.6" height="13" rx="4"/><path d="M2.5 10v5M21.5 10v5M8 22v-3M16 22v-3"/><circle cx="9" cy="11.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="11.5" r="1" fill="currentColor" stroke="none"/><path d="M9 15h6"/></svg><i></i><i></i></div>
   </div>
   <div class="ai-remaster-layout">
     <aside class="ai-side-card" aria-label="Painel do assistente">
-      <div class="ai-profile-orb"><span class="robot-mark" aria-hidden="true">🤖</span><span>✦</span></div>
+      <div class="ai-profile-orb"><svg class="nuvem-robot-svg ai-robot-medium" viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v2"/><circle cx="12" cy="2.7" r="1" fill="currentColor" stroke="none"/><rect x="4.2" y="6" width="15.6" height="13" rx="4"/><path d="M2.5 10v5M21.5 10v5M8 22v-3M16 22v-3"/><circle cx="9" cy="11.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="11.5" r="1" fill="currentColor" stroke="none"/><path d="M9 15h6"/></svg></div>
       <p class="eyebrow">ASSISTENTE PESSOAL</p><h3>Nuvem <span>AI</span></h3>
       <p>Um espaço para pensar com clareza, transformar perguntas em planos e guardar suas conversas.</p>
       <div class="ai-feature-pill"><i></i> Seu espaço privado</div>
@@ -126,17 +126,17 @@
         <div id="chat-list" class="chat-list" aria-label="Lista de conversas"><p class="chat-list-empty">Entre na conta para carregar.</p></div>
       </div>
       <div class="ai-side-divider"></div><span class="ai-side-label">COMECE POR AQUI</span>
-      <div class="ai-capability-list"><span>✦ Aprender com exemplos</span><span>✎ Escrever e revisar</span><span>⌘ Organizar ideias</span><span>♫ Transcrever áudio</span></div>
+      <div class="ai-capability-list"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 3z"/></svg>Aprender com exemplos</span><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16zM13.5 7.5l3 3"/></svg>Escrever e revisar</span><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg>Organizar ideias</span><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 10v1a7 7 0 0 0 14 0v-1M12 18v3M8 21h8"/></svg>Transcrever áudio</span></div>
     </aside>
     <div class="chat-layout ai-chat-remastered panel">
       <div class="chat-top">
-        <div class="assistant-avatar"><span class="ai-avatar-core" aria-hidden="true">🤖</span></div>
+        <div class="assistant-avatar"><svg class="nuvem-robot-svg ai-robot-small" viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v2"/><circle cx="12" cy="2.7" r="1" fill="currentColor" stroke="none"/><rect x="4.2" y="6" width="15.6" height="13" rx="4"/><path d="M2.5 10v5M21.5 10v5M8 22v-3M16 22v-3"/><circle cx="9" cy="11.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="11.5" r="1" fill="currentColor" stroke="none"/><path d="M9 15h6"/></svg></div>
         <div class="assistant-ident"><strong id="chat-current-title">Nova conversa</strong><small><i class="live-dot"></i> Nuvem AI · pronta para ajudar</small></div>
         <span class="ai-private-badge"><i></i> PRIVADO</span>
         <button type="button" id="chat-delete" class="chat-delete-button" disabled title="Excluir conversa">Excluir</button>
       </div>
       <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="Mensagens da conversa"><div class="assistant-message">Entre na sua conta para começar.</div></div>
-      <div class="ai-prompt-suggestions" id="ai-prompt-suggestions"><button type="button" data-prompt="Explique um assunto difícil de um jeito simples, com exemplos.">✦ Me ensine algo</button><button type="button" data-prompt="Me ajude a organizar minhas tarefas e definir prioridades.">☷ Organize minhas ideias</button><button type="button" data-prompt="Me ajude a criar um plano passo a passo para um projeto.">↗ Planeje um projeto</button></div>
+      <div class="ai-prompt-suggestions" id="ai-prompt-suggestions"><button type="button" data-prompt="Explique um assunto difícil de um jeito simples, com exemplos."><span class="ai-suggestion-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 3z"/></svg></span>Me ensine algo</button><button type="button" data-prompt="Me ajude a organizar minhas tarefas e definir prioridades."><span class="ai-suggestion-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></span>Organize minhas ideias</button><button type="button" data-prompt="Me ajude a criar um plano passo a passo para um projeto."><span class="ai-suggestion-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M8 5h11v11"/></svg></span>Planeje um projeto</button></div>
       <form id="chat-form" class="chat-form"><textarea id="chat-input" rows="1" placeholder="Pergunte qualquer coisa à Nuvem…" aria-label="Mensagem" disabled></textarea><button type="button" id="chat-audio-button" class="chat-audio-button" disabled title="Enviar áudio para transcrição" aria-label="Enviar áudio">♫</button><input id="chat-audio-file" type="file" accept="audio/*" hidden disabled><button id="chat-send" class="send-button" type="submit" disabled aria-label="Enviar mensagem"><span>↑</span></button></form>
       <div class="chat-bottom"><p class="form-footnote" id="chat-status" role="status">Faça login para usar o assistente.</p><span>ENTER ENVIA · SHIFT + ENTER QUEBRA LINHA</span></div>
     </div>
@@ -219,4 +219,4 @@
 </div>
 </nav>
 <footer class="footer">NUVEM · SEU ESPAÇO PESSOAL <span>Construído para você</span></footer>
-</main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="./app.js?v=34" defer></script><script src="./productivity.js?v=2" defer></script></body></html>
+</main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="./app.js?v=35" defer></script><script src="./productivity.js?v=2" defer></script></body></html>
