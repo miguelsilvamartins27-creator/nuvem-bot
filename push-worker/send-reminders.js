@@ -3,10 +3,12 @@ import webpush from 'web-push';
 
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || !VAPID_SUBJECT) {
-  throw new Error('Configuração incompleta: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY são obrigatórios.');
+  throw new Error('Configuração incompleta: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY e VAPID_SUBJECT são obrigatórios.');
 }
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+
+const PAGE_SIZE = 500;
 
 function localParts(date, timezone) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -17,14 +19,28 @@ function localParts(date, timezone) {
   return { date: p.year + '-' + p.month + '-' + p.day, time: p.hour + ':' + p.minute };
 }
 
+// Supabase pode limitar a quantidade de linhas por consulta. Paginar evita
+// ignorar lembretes quando a conta tiver mais registros que o limite padrão.
+async function fetchActiveReminders() {
+  const all = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await supabase.from('app_reminders')
+      .select('id,user_id,title,note,remind_at,repeat_daily,remind_date,active,last_notified_key,timezone')
+      .eq('active', true)
+      .order('id', { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw new Error('Não foi possível carregar os lembretes: ' + error.message);
+    all.push(...(data || []));
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return all;
+}
+
 const now = new Date();
-const { data: reminders, error } = await supabase.from('app_reminders')
-  .select('id,user_id,title,note,remind_at,repeat_daily,remind_date,active,last_notified_key,timezone')
-  .eq('active', true).limit(5000);
-if (error) throw new Error('Não foi possível carregar os lembretes: ' + error.message);
+const reminders = await fetchActiveReminders();
 
 let sent = 0, skipped = 0, failed = 0;
-for (const reminder of reminders || []) {
+for (const reminder of reminders) {
   let local;
   try { local = localParts(now, reminder.timezone || 'America/Sao_Paulo'); }
   catch { local = localParts(now, 'America/Sao_Paulo'); }
@@ -54,7 +70,8 @@ for (const reminder of reminders || []) {
     } catch (error) {
       failed++;
       if (error.statusCode === 404 || error.statusCode === 410) {
-        await supabase.from('app_push_subscriptions').delete().eq('id', sub.id);
+        const { error: deleteError } = await supabase.from('app_push_subscriptions').delete().eq('id', sub.id);
+        if (deleteError) console.error('Falha ao remover inscrição expirada:', sub.id, deleteError.message);
       }
     }
   }
@@ -66,4 +83,4 @@ for (const reminder of reminders || []) {
     if (updateError) console.error('Falha ao registrar lembrete enviado:', reminder.id, updateError.message);
   }
 }
-console.log(JSON.stringify({ checked: reminders?.length || 0, sent, skipped, failed }));
+console.log(JSON.stringify({ checked: reminders.length, sent, skipped, failed }));
