@@ -13,7 +13,7 @@ function aplicarTema(tema,persistir=true){
   const toggle=$("#theme-toggle"),icon=$("#theme-toggle-icon"),meta=$("#theme-color-meta");
   if(toggle){toggle.setAttribute("aria-label",isLight?"Ativar tema escuro":"Ativar tema claro");toggle.title=isLight?"Ativar tema escuro":"Ativar tema claro";toggle.setAttribute("aria-pressed",String(!isLight));}
   if(icon){icon.textContent=isLight?"☼":"☾";icon.style.display="inline-block";icon.style.fontSize="23px";}
-  if(meta)meta.setAttribute("content",isLight?"#f1f0ec":"#17181b");
+  if(meta)meta.setAttribute("content",isLight?"#d9d8d2":"#171817");
   document.querySelectorAll("[data-theme-choice]").forEach(button=>button.setAttribute("aria-checked",String(button.dataset.themeChoice===selecionado)));
 }
 let temaInicial="light";
