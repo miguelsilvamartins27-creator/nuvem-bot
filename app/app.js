@@ -31,7 +31,7 @@ $("#mobile-more-toggle")?.addEventListener("click",event=>{event.preventDefault(
 document.addEventListener("click",event=>{const menu=$("#mobile-more-menu"),toggle=$("#mobile-more-toggle");if(!menu||!toggle||menu.hidden)return;if(!menu.contains(event.target)&&!toggle.contains(event.target)){menu.hidden=true;toggle.setAttribute("aria-expanded","false");}});
 function setLoginStatus(message,isError=false){const el=$("#login-status");if(el){el.textContent=message;el.classList.toggle("error-text",isError);}}
 function setApiStatus(selector,message,isError=false){const el=$(selector);if(el){el.textContent=message;el.classList.toggle("error-text",isError);el.classList.toggle("is-thinking",!isError&&/pensando|processando|gerando|preparando|carregando/i.test(String(message||"")));}}
-async function api(path,options={}){if(!session?.access_token)throw new Error("Entre na sua conta novamente.");const response=await fetch(path,{...options,headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.access_token,...(options.headers||{})}});let body={};try{body=await response.json()}catch{}if(!response.ok)throw new Error(body.error||"Não foi possível concluir a operação.");return body;}
+async function api(path,options={}){if(!session?.access_token)throw new Error("Entre na sua conta novamente.");const response=await fetch(path,{...options,headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.access_token,...(options.headers||{})}});let body={};try{body=await response.json()}catch{}if(!response.ok){const error=new Error(body.error||"Não foi possível concluir a operação.");error.status=response.status;throw error;}return body;}
 function formatBRL(value){return Number(value||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
 function node(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=text;return el;}
 let chatList=[],activeChatId=null,chatMigrationMissing=false;
@@ -366,7 +366,19 @@ async function saveProfile(event){event.preventDefault();if(!session)return;cons
 $("#profile-form").addEventListener("submit",saveProfile);
 async function afterLogin(user){
   session=(await supabaseClient.auth.getSession()).data.session;
-  setAuthenticatedUI(user);if(!session)return;
+  if(!session){setAuthenticatedUI(null);return;}
+  try{await api("/api/app/session");}
+  catch(e){
+    if(e.status===401||e.status===403){
+      session=null;setAuthenticatedUI(null);
+      try{await supabaseClient.auth.signOut();}catch{}
+      setLoginStatus(e.message||"Esta conta não tem autorização para acessar o Nuvem.",true);return;
+    }
+    setAuthenticatedUI(user);
+    setApiStatus("#chat-status","Não consegui validar a sessão no servidor. Confira sua conexão e tente novamente.",true);
+    return;
+  }
+  setAuthenticatedUI(user);
   window.dispatchEvent(new Event("nuvem:authenticated"));
   setApiStatus("#chat-status","Carregando suas conversas…");
   const jobs=[loadProfile(),loadChats(),loadExpenses(),loadHistory(),loadReminders(),loadWellnessRecords()];
