@@ -2,9 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#ffffff"><meta name="description" content="Seu espaço pessoal de IA, mídia e organização.">
+<meta name="theme-color" content="#f6f6f4" id="theme-color-meta"><meta name="description" content="Seu espaço pessoal de IA, mídia e organização.">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Nuvem">
-<link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./styles.css?v=21"><title>Nuvem — seu espaço pessoal</title>
+<link rel="manifest" href="./manifest.webmanifest"><script>try{document.documentElement.dataset.theme=localStorage.getItem("nuvem-theme")||"light"}catch{document.documentElement.dataset.theme="light"}</script><link rel="stylesheet" href="./styles.css?v=22"><title>Nuvem — seu espaço pessoal</title>
 </head>
 <body>
 <div id="login-screen" class="login-screen"><form id="login-form" class="login-card"><span class="brand-mark login-mark">n</span><p class="eyebrow">ACESSO PRIVADO</p><h1>Bem-vindo à Nuvem.</h1><p class="lead">Entre com a conta autorizada para acessar seu espaço pessoal.</p><label>E-mail<input id="login-email" type="email" autocomplete="username" required placeholder="Seu e-mail"></label><label>Senha<input id="login-password" type="password" autocomplete="current-password" required minlength="8" placeholder="Sua senha"></label><button class="button button-primary login-submit" id="login-submit" type="submit">Entrar com segurança</button><p id="login-status" class="form-footnote" role="status">Carregando autenticação segura…</p></form></div>
@@ -19,7 +19,7 @@
 <div class="sidebar-bottom"><div class="privacy-note"><span class="status-dot"></span><div><strong>Espaço privado</strong><small>Conta protegida</small></div></div><button class="nav-item" data-view="config"><span>⚙</span> Configurações</button></div>
 </aside>
 <main class="main">
-<header class="topbar"><div class="mobile-brand"><span class="brand-mark">n</span><strong>Nuvem</strong></div><div class="breadcrumb">Seu espaço <span>/</span> <strong id="crumb">Início</strong></div><div class="top-actions"><button id="logout-button" class="logout-button" hidden>Sair</button><span class="connection-pill"><i></i><span id="connection-label">Conexão não verificada</span></span><button class="avatar" aria-label="Perfil" data-view="config">M</button></div></header>
+<header class="topbar"><div class="mobile-brand"><span class="brand-mark">n</span><strong>Nuvem</strong></div><div class="breadcrumb">Seu espaço <span>/</span> <strong id="crumb">Início</strong></div><div class="top-actions"><button type="button" id="theme-toggle" class="theme-toggle" aria-label="Ativar tema escuro" title="Ativar tema escuro"><span id="theme-toggle-icon" aria-hidden="true">☀</span></button><button id="logout-button" class="logout-button" hidden>Sair</button><span class="connection-pill"><i></i><span id="connection-label">Conexão não verificada</span></span><button class="avatar" aria-label="Perfil" data-view="config">M</button></div></header>
 <section class="view active" id="view-inicio">
 <div class="welcome-row"><div><p class="eyebrow">NUVEM OS / PAINEL PESSOAL</p><h1>Controle total.<br><span>Sem ruído.</span></h1><p class="lead">Inteligência, rotina e dinheiro em uma interface feita para você.</p></div><div class="hero-orb" aria-hidden="true">✳</div></div>
 <div class="notice"><span class="notice-icon">✦</span><div><strong>Seu centro de comando pessoal</strong><p>Acesse seus sistemas, acompanhe seus registros e mantenha tudo sob controle em um só lugar.</p></div></div>
@@ -162,4 +162,4 @@
 <div class="setting-row"><span class="setting-icon">↗</span><div><strong>WhatsApp</strong><small>Manter o bot como acesso adicional</small></div><span class="setting-state">Projeto existente</span></div></div></section>
 <nav class="mobile-nav" aria-label="Navegação móvel"><button class="mobile-nav-item active" data-view="inicio"><span>⌂</span><small>Início</small></button><button class="mobile-nav-item" data-view="ia"><span>✳</span><small>IA</small></button><button class="mobile-nav-item" data-view="figurinhas"><span>✂</span><small>Figurinhas</small></button><button class="mobile-nav-item" data-view="midia"><span>▧</span><small>Mídia</small></button><button class="mobile-nav-item" data-view="fit"><span>✦</span><small>Fit</small></button><button class="mobile-nav-item" data-view="dieta"><span>◒</span><small>Dieta</small></button><button class="mobile-nav-item" data-view="financas"><span>◉</span><small>Finanças</small></button><button class="mobile-nav-item" data-view="lembretes"><span>♧</span><small>Lembretes</small></button><button class="mobile-nav-item" data-view="config"><span>⚙</span><small>Ajustes</small></button></nav>
 <footer class="footer">NUVEM · SEU ESPAÇO PESSOAL <span>Construído para você</span></footer>
-</main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="./app.js?v=23" defer></script></body></html>
+</main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="./app.js?v=24" defer></script></body></html>
