@@ -12,3 +12,47 @@
 @media(max-width:500px){.export-choice-content{padding:20px}.export-choice-content h2{font-size:21px}}
 
 #send-whatsapp[hidden]{display:none!important}
+
+/* Nuvem Studio refresh: clearer hierarchy, responsive timeline and visible import feedback */
+:root{--bg:#090b0a;--panel:#111613;--line:#27322b;--text:#f5f8f4;--muted:#a0aaa1;--lime:#c6ff3d;--accent:#c6ff3d}
+body{background:radial-gradient(ellipse at 8% 0%,#263729 0,transparent 32%),radial-gradient(ellipse at 90% 15%,#1a2821 0,transparent 30%),#090b0a}
+.studio-topbar{border-color:#27352b;background:#090d0bed}
+.studio-brand{letter-spacing:-.02em}.brand-mark{box-shadow:0 0 28px #c6ff3d22;border-radius:11px}
+.studio-shell{max-width:1600px;padding-top:24px}
+.studio-intro{padding:25px 28px;border:1px solid #28362b;border-radius:22px;background:linear-gradient(115deg,#151e17dd,#0f1311dd);margin-bottom:18px}
+.studio-intro h1{font-size:clamp(30px,3.5vw,43px)}
+.studio-symbol{border-radius:25px;width:78px;height:78px;background:linear-gradient(145deg,#283d2b,#111712);box-shadow:inset 0 1px #ffffff10,0 14px 35px #0004}
+.studio-workspace{grid-template-columns:minmax(270px,315px) minmax(0,1fr);gap:18px}
+.panel{border-color:#28332b;border-radius:18px;background:linear-gradient(150deg,#151b17,#101411);box-shadow:0 12px 35px #0002}
+.panel h2,.timeline-head h2{font-size:16px;letter-spacing:-.035em}
+.eyebrow{letter-spacing:.13em}
+.upload-zone{border:1px dashed #53654a;background:linear-gradient(145deg,#19241a,#111812);border-radius:15px;min-height:155px;transition:background .2s,border-color .2s,transform .2s}
+.upload-zone:hover{border-color:var(--lime);background:#1d2a1e;transform:translateY(-1px)}
+.upload-icon{width:38px;height:38px;border-radius:13px;box-shadow:0 0 22px #c6ff3d20}
+.primary-button,.secondary-button,.small-tool,.back-link{transition:transform .15s,border-color .15s,background .15s}
+.primary-button:hover:not(:disabled),.secondary-button:hover:not(:disabled){transform:translateY(-1px)}
+.timeline-panel{min-height:0;padding:22px;background:linear-gradient(160deg,#151b17,#101310)}
+.timeline-state{display:flex;align-items:center;gap:10px;min-height:42px;padding:10px 13px;margin-bottom:18px;border:1px solid #35452f;border-radius:12px;background:#1a241a;color:#cce9bd;font-size:12px;overflow-wrap:anywhere}
+.timeline-state:before{content:"●";color:var(--lime);font-size:9px;flex:none}
+.timeline-state.error{color:#ffb6b6;border-color:#653838;background:#241616}
+.timeline-state.error:before{content:"!";display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:#6b2929;color:#fff;font-size:11px;font-weight:900}
+.timeline-head{padding-bottom:12px}
+.time-counter{border-color:#334332;background:#0c110d;padding:9px 12px;border-radius:11px}
+.player-row{padding:17px 0;border-color:#29342c}
+.play-button{width:44px;height:44px;border-radius:15px;box-shadow:0 0 24px #c6ff3d18;font-size:15px}
+.player-meta strong{font-size:13px}
+.waveform-wrap{height:205px;border-radius:14px;border-color:#354335;background:repeating-linear-gradient(90deg,#151c16 0,#151c16 calc(10% - 1px),#29332a calc(10% - 1px),#29332a 10%)}
+.waveform-placeholder{color:#a0ada0;font-size:12px;background:#0a0e0a55}
+.selection-overlay{background:#c6ff3d20}
+.range-controls{padding:15px;border:1px solid #29352a;border-radius:14px;background:#0d120e}
+.range-controls input{border-color:#334034;background:#080b09;border-radius:10px}
+.trim-slider-row{padding:0 4px}
+.control-label input[type=range],.trim-slider-row input{accent-color:var(--lime)}
+.status{padding:10px 11px;border:1px solid #29352a;border-radius:11px;background:#0c100d;line-height:1.55;min-height:38px}
+.status.error{border-color:#603636;background:#211413}
+.file-name{padding:8px 9px;background:#0c100d;border-radius:9px}
+.fade-grid{gap:9px}
+.control-label input[type=number]{border-color:#334034;background:#0b100c}
+.export-choice-dialog{border-color:#3b4b39;background:#101611}
+@media(max-width:980px){.studio-workspace{grid-template-columns:1fr}.studio-sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}.file-panel{grid-row:auto}.timeline-panel{order:-1}.studio-intro{padding:22px}}
+@media(max-width:640px){.studio-shell{padding:14px 10px}.studio-intro{padding:18px 15px;border-radius:16px}.studio-intro h1{font-size:30px}.studio-symbol{width:49px;height:49px;font-size:25px;border-radius:15px}.studio-workspace{gap:12px}.timeline-panel{padding:13px}.timeline-state{font-size:11px;margin-bottom:13px}.waveform-wrap{height:165px}.range-controls{padding:10px}.studio-sidebar{grid-template-columns:1fr}.studio-topbar{padding:0 10px}}
