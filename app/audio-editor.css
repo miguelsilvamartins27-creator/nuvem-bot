@@ -56,3 +56,53 @@ body{background:radial-gradient(ellipse at 8% 0%,#263729 0,transparent 32%),radi
 .export-choice-dialog{border-color:#3b4b39;background:#101611}
 @media(max-width:980px){.studio-workspace{grid-template-columns:1fr}.studio-sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}.file-panel{grid-row:auto}.timeline-panel{order:-1}.studio-intro{padding:22px}}
 @media(max-width:640px){.studio-shell{padding:14px 10px}.studio-intro{padding:18px 15px;border-radius:16px}.studio-intro h1{font-size:30px}.studio-symbol{width:49px;height:49px;font-size:25px;border-radius:15px}.studio-workspace{gap:12px}.timeline-panel{padding:13px}.timeline-state{font-size:11px;margin-bottom:13px}.waveform-wrap{height:165px}.range-controls{padding:10px}.studio-sidebar{grid-template-columns:1fr}.studio-topbar{padding:0 10px}}
+
+
+/* NUVEM MONO — Audio Studio, mesma linguagem visual do app */
+:root{color-scheme:light;--bg:#f5f5f2;--panel:#fff;--line:#e3e3de;--text:#171717;--muted:#777772;--lime:#111;--accent:#111}
+html,body{background:#f5f5f2!important;color:#171717!important;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{background:#f5f5f2!important}
+.studio-topbar{background:rgba(255,255,255,.92)!important;border-bottom:1px solid #e3e3df!important;color:#111!important;backdrop-filter:blur(18px)}
+.studio-brand{color:#111!important}
+.brand-mark{background:#111!important;color:#fff!important;border:1px solid #111!important;box-shadow:0 4px 0 #deded9!important}
+.auth-state{color:#666!important}
+.back-link{background:#fff!important;color:#111!important;border:1px solid #deded9!important;border-radius:10px!important;box-shadow:0 3px 0 #e8e8e3!important}
+.studio-shell{max-width:1600px!important}
+.studio-intro{background:linear-gradient(125deg,#fff,#efefec)!important;border:1px solid #e4e4df!important;border-radius:22px!important;box-shadow:0 8px 28px #00000006!important}
+.studio-intro h1{color:#111!important;letter-spacing:-.07em!important}
+.studio-intro h1 span{color:#777!important}
+.eyebrow{color:#73736d!important;letter-spacing:.15em!important}
+.intro-copy,.muted{color:#777!important;line-height:1.7}
+.studio-symbol{background:linear-gradient(145deg,#fff,#d8d8d3)!important;color:#111!important;border:1px solid #d0d0cb!important;box-shadow:inset 0 2px #fff,0 12px 0 #e8e8e4,0 22px 30px #0000000d!important;border-radius:24px!important}
+.panel,.timeline-panel{background:#fff!important;border:1px solid #e4e4df!important;border-radius:17px!important;box-shadow:0 8px 28px #00000005!important;color:#171717!important}
+.upload-zone{background:#f7f7f4!important;border:1px dashed #c7c7c1!important;border-radius:14px!important}
+.upload-zone:hover{background:#f0f0ed!important;border-color:#777!important}
+.upload-icon{background:#111!important;color:#fff!important;box-shadow:0 4px 0 #deded9!important}
+.primary-button{background:#111!important;color:#fff!important;border:1px solid #111!important;box-shadow:0 4px 0 #d8d8d3!important}
+.secondary-button,.small-tool{background:#fff!important;color:#111!important;border:1px solid #deded9!important;box-shadow:0 3px 0 #e8e8e3!important}
+.primary-button:hover:not(:disabled),.secondary-button:hover:not(:disabled){transform:translateY(-2px)}
+.control-label,.range-controls,.trim-slider-row{color:#555!important}
+input,select,textarea,.range-controls input,.control-label input[type=number]{background:#fff!important;color:#171717!important;border-color:#deded9!important;border-radius:9px!important}
+input:focus{outline:none;border-color:#777!important;box-shadow:0 0 0 3px #1111110c!important}
+.time-counter{background:#f6f6f3!important;border-color:#e2e2dd!important;color:#222!important;border-radius:10px!important}
+.time-counter span:first-child,.selection-duration strong,.range-separator{color:#111!important}
+.player-row{border-color:#ecece8!important}
+.play-button{background:#111!important;color:#fff!important;box-shadow:0 4px 0 #d8d8d3!important;border-radius:13px!important}
+.waveform-wrap{background:repeating-linear-gradient(90deg,#f2f2ef 0,#f2f2ef calc(10% - 1px),#e4e4df calc(10% - 1px),#e4e4df 10%)!important;border-color:#d8d8d2!important;border-radius:13px!important}
+.waveform-wrap canvas{filter:grayscale(1);opacity:.9}
+.selection-overlay{background:#11111114!important;border-color:#111!important}
+.selection-overlay span{background:#111!important;color:#fff!important}
+.waveform-placeholder{color:#888!important;background:#ffffff50}
+.range-controls{background:#f8f8f5!important;border-color:#e7e7e2!important;border-radius:13px!important}
+.trim-slider-row input,.control-label input[type=range]{accent-color:#111!important}
+.timeline-foot,.studio-footer{color:#888!important}
+.status{background:#f7f7f4!important;border:1px solid #e7e7e2!important;color:#666!important;border-radius:10px!important}
+.timeline-state{background:#f4f4f1!important;border-color:#e5e5e0!important;color:#555!important}
+.timeline-state:before{color:#111!important}
+.timeline-state.error{background:#f7eeee!important;border-color:#e8cece!important;color:#782e2e!important}
+.file-name{background:#f5f5f2!important;color:#444!important;border-radius:9px!important}
+.export-choice-dialog{background:#fff!important;color:#171717!important;border-color:#e1e1dc!important;box-shadow:0 24px 90px #0002!important}
+.export-choice-content .eyebrow{color:#777!important}
+.export-choice-content p:not(.eyebrow),.export-choice-content small{color:#777!important}
+.export-choice-content .choice-cancel{color:#777!important}
+@media(max-width:640px){.studio-intro{border-radius:16px!important}.panel,.timeline-panel{border-radius:14px!important}}
