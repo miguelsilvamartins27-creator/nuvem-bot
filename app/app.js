@@ -13,7 +13,7 @@ function aplicarTema(tema,persistir=true){
   const toggle=$("#theme-toggle"),icon=$("#theme-toggle-icon"),meta=$("#theme-color-meta");
   if(toggle){toggle.setAttribute("aria-label",isLight?"Ativar tema escuro":"Ativar tema claro");toggle.title=isLight?"Ativar tema escuro":"Ativar tema claro";toggle.setAttribute("aria-pressed",String(!isLight));}
   if(icon){icon.textContent=isLight?"☼":"☾";icon.style.display="inline-block";icon.style.fontSize="23px";}
-  if(meta)meta.setAttribute("content",isLight?"#d9d8d2":"#171817");
+  if(meta)meta.setAttribute("content",isLight?"#f5f4ef":"#14191a");
   document.querySelectorAll("[data-theme-choice]").forEach(button=>button.setAttribute("aria-checked",String(button.dataset.themeChoice===selecionado)));
 }
 let temaInicial="light";
@@ -35,9 +35,60 @@ async function api(path,options={}){if(!session?.access_token)throw new Error("E
 function formatBRL(value){return Number(value||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
 function node(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=text;return el;}
 let chatList=[],activeChatId=null,chatMigrationMissing=false;
-function addChatMessage(role,content){const area=$("#chat-messages");if(!area)return;const bubble=node("div","chat-message "+(role==="user"?"user-message":"assistant-message"));bubble.textContent=String(content??"");area.appendChild(bubble);area.scrollTop=area.scrollHeight;}
+function appendInlineFormatting(parent,text){
+  const pattern=/(\*\*[^*]+\*\*|\*[^*]+\*)/g;let cursor=0,match;
+  while((match=pattern.exec(text))){if(match.index>cursor)parent.appendChild(document.createTextNode(text.slice(cursor,match.index)));const token=match[0];const strong=token.startsWith("**");const element=document.createElement(strong?"strong":"em");element.textContent=token.slice(strong?2:1,strong?-2:-1);parent.appendChild(element);cursor=pattern.lastIndex;}
+  if(cursor<text.length)parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+function renderAssistantContent(container,content){
+  const fence=String.fromCharCode(96).repeat(3),chunks=String(content??"").split(fence);
+  chunks.forEach((chunk,index)=>{
+    if(index%2===1){const codeText=chunk.replace(/^[a-zA-Z0-9_+#.-]{1,20}\r?\n/,"");const pre=node("pre","chat-code-block"),code=node("code","",codeText);pre.appendChild(code);container.appendChild(pre);return;}
+    let list=null;
+    for(const line of chunk.split(/\r?\n/)){
+      if(!line.trim()){list=null;continue;}
+      const heading=line.match(/^(#{1,3})\s+(.+)$/);
+      const bullet=line.match(/^\s*[-*]\s+(.+)$/);
+      if(bullet){if(!list){list=document.createElement("ul");list.className="chat-markdown-list";container.appendChild(list);}const li=document.createElement("li");appendInlineFormatting(li,bullet[1]);list.appendChild(li);continue;}
+      list=null;
+      if(heading){const h=document.createElement(heading[1].length===1?"h3":heading[1].length===2?"h4":"h5");appendInlineFormatting(h,heading[2]);container.appendChild(h);continue;}
+      if(line.startsWith("> ")){const quote=document.createElement("blockquote");appendInlineFormatting(quote,line.slice(2));container.appendChild(quote);continue;}
+      const paragraph=document.createElement("p");appendInlineFormatting(paragraph,line);container.appendChild(paragraph);
+    }
+  });
+}
+function scrollChatToBottom(force=false){
+  const area=$("#chat-messages");if(!area)return;
+  const nearBottom=area.scrollHeight-area.scrollTop-area.clientHeight<150;
+  if(force||nearBottom)requestAnimationFrame(()=>{area.scrollTop=area.scrollHeight;});
+}
+function addChatMessage(role,content){
+  const area=$("#chat-messages");if(!area)return null;
+  const isUser=role==="user",bubble=node("article","chat-message "+(isUser?"user-message":"assistant-message"));
+  bubble.dataset.role=role;const body=node("div","message-content");
+  if(isUser)body.textContent=String(content??"");else renderAssistantContent(body,content);
+  bubble.appendChild(body);
+  if(!isUser){
+    const actions=node("div","message-actions"),copy=node("button","message-copy","Copiar");
+    copy.type="button";copy.setAttribute("aria-label","Copiar resposta");copy.addEventListener("click",async()=>{
+      try{await navigator.clipboard.writeText(String(content??""));copy.textContent="Copiado";setTimeout(()=>{copy.textContent="Copiar";},1400);}
+      catch{setApiStatus("#chat-status","Não foi possível copiar automaticamente. Selecione o texto e copie manualmente.",true);}
+    });
+    actions.appendChild(copy);bubble.appendChild(actions);
+  }
+  area.appendChild(bubble);scrollChatToBottom();return bubble;
+}
+function addTypingIndicator(){
+  removeTypingIndicator();const area=$("#chat-messages");if(!area)return null;
+  const bubble=node("article","chat-message assistant-message typing-message");bubble.setAttribute("aria-label","A Nuvem está preparando uma resposta");
+  const body=node("div","message-content"),indicator=node("div","typing-indicator");
+  indicator.setAttribute("aria-hidden","true");for(let i=0;i<3;i++)indicator.appendChild(node("span","typing-dot"));
+  body.appendChild(indicator);bubble.appendChild(body);area.appendChild(bubble);scrollChatToBottom(true);return bubble;
+}
+function removeTypingIndicator(){document.querySelectorAll("#chat-messages .typing-message").forEach(el=>el.remove());}
+function updatePromptSuggestions(show){const suggestions=$("#ai-prompt-suggestions");if(suggestions)suggestions.hidden=!show;}
 function renderChatList(){const area=$("#chat-list");if(!area)return;area.replaceChildren();if(!chatList.length){area.appendChild(node("p","chat-list-empty","Suas conversas aparecerão aqui."));return;}for(const chat of chatList){const row=node("div","chat-list-row"+(chat.id===activeChatId?" active":"")),pick=node("button","chat-list-pick"),icon=node("span","chat-list-icon"),title=node("span","chat-list-title",chat.title||"Nova conversa");pick.type="button";pick.append(icon,title);pick.addEventListener("click",async()=>{activeChatId=chat.id;renderChatList();await loadChat();});row.appendChild(pick);area.appendChild(row);}}
-async function loadChats(){const area=$("#chat-messages");try{let data=await api("/api/app/chats");chatList=data.chats||[];chatMigrationMissing=false;if(!chatList.length){const created=await api("/api/app/chats",{method:"POST",body:JSON.stringify({title:"Nova conversa"})});chatList=[created.chat];}activeChatId=chatList[0]?.id||null;renderChatList();if(activeChatId)await loadChat();else{area?.replaceChildren();addChatMessage("assistant","Olá! Sou a Nuvem. Como posso ajudar?");}}catch(e){chatMigrationMissing=true;chatList=[];renderChatList();if(area){area.replaceChildren();addChatMessage("assistant",e.message);}setApiStatus("#chat-status","Para ativar o histórico de vários chats, aplique a migração SQL de conversas no Supabase.",true);}}
+async function loadChats(){const area=$("#chat-messages");try{let data=await api("/api/app/chats");chatList=data.chats||[];chatMigrationMissing=false;if(!chatList.length){const created=await api("/api/app/chats",{method:"POST",body:JSON.stringify({title:"Nova conversa"})});chatList=[created.chat];}activeChatId=chatList[0]?.id||null;renderChatList();if(activeChatId)await loadChat();else{area?.replaceChildren();addChatMessage("assistant","Olá! Sou a Nuvem. Como posso ajudar?");}}catch(e){chatMigrationMissing=true;chatList=[];renderChatList();if(area){area.replaceChildren();addChatMessage("assistant",e.message);}updatePromptSuggestions(true);setApiStatus("#chat-status","Para ativar o histórico de vários chats, aplique a migração SQL de conversas no Supabase.",true);}}
 async function loadChat(){const area=$("#chat-messages");if(!area)return;area.replaceChildren();if(!activeChatId){addChatMessage("assistant","Crie uma conversa para começar.");return;}try{const data=await api("/api/app/chat?conversation_id="+encodeURIComponent(activeChatId)+"&limit=40");if(!data.messages.length)addChatMessage("assistant","Olá! Sou a Nuvem. Como posso ajudar?");for(const m of data.messages)addChatMessage(m.role,m.content);const current=chatList.find(c=>c.id===activeChatId);if(current&&$("#chat-current-title"))$("#chat-current-title").textContent=current.title||"Nova conversa";}catch(e){addChatMessage("assistant",e.message);}}
 async function createChat(){if(!session||busy)return;const button=$("#chat-new");if(button)button.disabled=true;try{const data=await api("/api/app/chats",{method:"POST",body:JSON.stringify({title:"Nova conversa"})});chatList.unshift(data.chat);activeChatId=data.chat.id;renderChatList();await loadChat();setApiStatus("#chat-status","Nova conversa pronta.");$("#chat-input")?.focus();}catch(e){setApiStatus("#chat-status",e.message,true);}finally{if(button)button.disabled=!session;}}
 async function deleteChat(){if(!session||!activeChatId||busy)return;if(!confirm("Excluir esta conversa e todas as mensagens dela? Essa ação não pode ser desfeita."))return;const button=$("#chat-delete");if(button)button.disabled=true;try{await api("/api/app/chats/"+encodeURIComponent(activeChatId),{method:"DELETE"});chatList=chatList.filter(c=>c.id!==activeChatId);if(!chatList.length){const data=await api("/api/app/chats",{method:"POST",body:JSON.stringify({title:"Nova conversa"})});chatList=[data.chat];}activeChatId=chatList[0].id;renderChatList();await loadChat();setApiStatus("#chat-status","Conversa excluída.");}catch(e){setApiStatus("#chat-status",e.message,true);}finally{if(button)button.disabled=!session;}}
@@ -182,7 +233,25 @@ $("#fit-ai-form")?.addEventListener("submit",e=>{e.preventDefault();askWellnessA
 $("#meal-ai-form")?.addEventListener("submit",e=>{e.preventDefault();askWellnessAI("meal");});
 
 
-async function sendChat(event){event.preventDefault();if(busy||!session)return;const input=$("#chat-input"),button=$("#chat-send"),text=input.value.trim();if(!text)return;if(!activeChatId){setApiStatus("#chat-status","Crie uma conversa antes de enviar mensagens.",true);return;}if(text.length>4000){setApiStatus("#chat-status","Limite de 4000 caracteres por mensagem.",true);return;}busy=true;button.disabled=true;input.disabled=true;addChatMessage("user",text);input.value="";input.style.height="auto";setApiStatus("#chat-status","A Nuvem está pensando…");try{const result=await api("/api/app/chat",{method:"POST",body:JSON.stringify({content:text,conversation_id:activeChatId})});addChatMessage("assistant",result.message.content);setApiStatus("#chat-status","Resposta salva nesta conversa.");await Promise.all([loadHistory(),refreshChatList()]);}catch(e){setApiStatus("#chat-status",e.message,true);addChatMessage("assistant","Não consegui concluir essa mensagem. "+e.message);}finally{busy=false;button.disabled=!session;input.disabled=!session;input.focus();}}
+async function sendChat(event){
+  event.preventDefault();if(busy||!session)return;
+  const input=$("#chat-input"),button=$("#chat-send"),text=input.value.trim();
+  if(!text)return;
+  if(!activeChatId){setApiStatus("#chat-status","Crie uma conversa antes de enviar mensagens.",true);return;}
+  if(text.length>4000){setApiStatus("#chat-status","Limite de 4000 caracteres por mensagem.",true);return;}
+  busy=true;button.disabled=true;input.disabled=true;addChatMessage("user",text);updatePromptSuggestions(false);
+  input.value="";input.style.height="auto";setApiStatus("#chat-status","Preparando sua resposta…");addTypingIndicator();
+  try{
+    const result=await api("/api/app/chat",{method:"POST",body:JSON.stringify({content:text,conversation_id:activeChatId})});
+    removeTypingIndicator();addChatMessage("assistant",result.message.content);setApiStatus("#chat-status","Resposta salva nesta conversa.");
+    await Promise.all([loadHistory(),refreshChatList()]);
+  }catch(e){
+    removeTypingIndicator();setApiStatus("#chat-status",e.message,true);
+    addChatMessage("assistant","Não consegui concluir essa mensagem. "+e.message);
+  }finally{
+    removeTypingIndicator();busy=false;button.disabled=!session;input.disabled=!session;input.focus();scrollChatToBottom(true);
+  }
+}
 async function refreshChatList(){try{const data=await api("/api/app/chats");chatList=data.chats||[];renderChatList();const current=chatList.find(c=>c.id===activeChatId);if(current&&$("#chat-current-title"))$("#chat-current-title").textContent=current.title||"Nova conversa";}catch{}}
 let allExpenses=[];
 let filteredExpenses=[];
