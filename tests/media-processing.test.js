@@ -21,6 +21,7 @@ describe('Conversão real da Central de mídia', () => {
     montarAppPessoal(app, {
       getSupabase: () => supabase,
       getAiRouter: () => ({ executar: async () => ({ texto: 'teste' }) }),
+      sendWhatsAppSticker: async buffer => { if (!Buffer.isBuffer(buffer)) throw new Error('Buffer inválido'); },
       env: {
         SUPABASE_URL: 'https://example.supabase.co',
         SUPABASE_ANON_KEY: 'test-anon-key',
@@ -61,6 +62,27 @@ describe('Conversão real da Central de mídia', () => {
     assert.ok(result.length > 20);
     assert.deepEqual([...result.subarray(0, 4)], [0x52, 0x49, 0x46, 0x46]);
     assert.equal(result.toString('ascii', 8, 12), 'WEBP');
+  });
+
+
+  it('envia uma figurinha WEBP válida para o WhatsApp conectado', async () => {
+    const image = await sharp({ create: { width: 32, height: 32, channels: 4, background: { r: 20, g: 200, b: 80, alpha: 1 } } }).webp().toBuffer();
+    const response = await fetch(baseUrl + '/api/app/media/sticker/send', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-token', 'Content-Type': 'image/webp' },
+      body: image
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).ok, true);
+  });
+
+  it('recusa envio de arquivo que não seja WEBP', async () => {
+    const response = await fetch(baseUrl + '/api/app/media/sticker/send', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/octet-stream' },
+      body: Buffer.from('não é webp')
+    });
+    assert.equal(response.status, 415);
   });
 
   it('rejeita conteúdo que não é uma imagem sem derrubar o servidor', async () => {

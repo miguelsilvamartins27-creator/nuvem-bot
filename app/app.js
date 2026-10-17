@@ -71,6 +71,17 @@ async function startApp(){try{const configResponse=await fetch("/api/app/config"
 $("#login-form").addEventListener("submit",async event=>{event.preventDefault();if(!supabaseClient){setLoginStatus("A autenticação ainda não está configurada no servidor.",true);return;}const button=$("#login-submit");button.disabled=true;setLoginStatus("Validando sua conta…");try{const {data,error}=await supabaseClient.auth.signInWithPassword({email:$("#login-email").value.trim(),password:$("#login-password").value});if(error)throw error;session=data.session;await afterLogin(data.user);}catch(e){setLoginStatus(e.message||"Não foi possível entrar.",true);}finally{button.disabled=false;}});
 $("#logout-button").addEventListener("click",async()=>{if(supabaseClient)await supabaseClient.auth.signOut();session=null;setAuthenticatedUI(null);setLoginStatus("Você saiu da sua conta.");});
 $("#chat-form").addEventListener("submit",sendChat);
+const chatInput = $("#chat-input");
+chatInput?.addEventListener("input", () => {
+  chatInput.style.height = "auto";
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 180) + "px";
+});
+chatInput?.addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    $("#chat-form")?.requestSubmit();
+  }
+});
 $("#expense-form").addEventListener("submit",addExpense);
 async function verificarBackend(){const label=$("#connection-label");try{const response=await fetch("/health",{headers:{Accept:"application/json"},cache:"no-store"});if(!response.ok)throw new Error();const data=await response.json();if(label&&!session)label.textContent=data.online?"Servidor acessível":"Servidor indisponível";}catch{if(label&&!session)label.textContent="API ainda não conectada";}}
 verificarBackend();startApp();
@@ -113,7 +124,7 @@ function identificarTipoArquivo(file) {
   if (["mp3","wav","ogg","oga","flac","m4a","aac","opus","aiff"].includes(ext)) return "audio";
   return "unknown";
 }
-async function enviarArquivoParaDownload(path, file, statusSelector, button, fallbackName) {
+async function enviarArquivoParaDownload(path, file, statusSelector, button, fallbackName, sendToWhatsApp = false) {
   if (!session?.access_token || !file) { setApiStatus(statusSelector, "Entre na sua conta e escolha um arquivo primeiro.", true); return; }
   if (file.size === 0) { setApiStatus(statusSelector, "Esse arquivo está vazio. Escolha outro arquivo.", true); return; }
   if (file.size > 12 * 1024 * 1024) { setApiStatus(statusSelector, "O limite é 12 MB por arquivo.", true); return; }
@@ -146,6 +157,38 @@ async function enviarArquivoParaDownload(path, file, statusSelector, button, fal
     if (!blob.size) throw new Error("O servidor retornou um arquivo vazio.");
     const disposition = response.headers.get("content-disposition") || "";
     const name = disposition.match(/filename="([^"]+)"/i)?.[1] || fallbackName;
+    if (sendToWhatsApp) {
+      setApiStatus(statusSelector, "Figurinha criada. Enviando ao WhatsApp…");
+      try {
+        const sendResponse = await fetch("/api/app/media/sticker/send", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + session.access_token, "Content-Type": "image/webp" },
+          body: blob,
+          cache: "no-store"
+        });
+        let sendBody = {};
+        try { sendBody = await sendResponse.json(); } catch {}
+        if (sendResponse.ok) {
+          setApiStatus(statusSelector, "✓ Figurinha enviada diretamente ao seu WhatsApp.");
+          return;
+        }
+        throw new Error(sendBody.error || "O WhatsApp não confirmou o envio.");
+      } catch (sendError) {
+        const url = URL.createObjectURL(blob);
+        const link = node("a", "", "Baixar figurinha");
+        link.href = url;
+        link.download = name;
+        link.className = "button button-secondary media-download-link";
+        link.style.display = "inline-flex";
+        link.style.marginTop = "10px";
+        document.body.appendChild(link);
+        link.click();
+        setApiStatus(statusSelector, "Não consegui enviar ao WhatsApp: " + (sendError.message || "erro de conexão") + " A figurinha foi baixada como alternativa.", true);
+        window.setTimeout(() => link.remove(), 60_000);
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        return;
+      }
+    }
     const url = URL.createObjectURL(blob);
     const link = node("a", "", "Baixar arquivo");
     link.href = url;
@@ -172,7 +215,7 @@ $("#sticker-form")?.addEventListener("submit", async event => {
   if (!["image", "video"].includes(kind)) return setApiStatus("#sticker-status", "Formato não reconhecido. Escolha JPG, PNG, WEBP, GIF, MP4 ou WEBM.", true);
   const isVideo = kind === "video";
   const endpoint = isVideo ? "/api/app/media/sticker-video" : "/api/app/media/sticker";
-  await enviarArquivoParaDownload(endpoint, file, "#sticker-status", $("#sticker-submit"), isVideo ? "nuvem-figurinha-animada.webp" : "nuvem-figurinha.webp");
+  await enviarArquivoParaDownload(endpoint, file, "#sticker-status", $("#sticker-submit"), isVideo ? "nuvem-figurinha-animada.webp" : "nuvem-figurinha.webp", true);
 });
 $("#audio-form")?.addEventListener("submit", async event => {
   event.preventDefault();
@@ -185,7 +228,10 @@ function desenharResultadosAudio(results) {
   const area = $("#audio-search-results");
   if (!area) return;
   area.replaceChildren();
-  if (!results.length) { area.appendChild(node("p", "muted", "Nenhum resultado com licença aberta foi encontrado. Tente outro termo.")); return; }
+  if (!results.length) {
+    area.appendChild(node("p", "muted", "Nenhum áudio com licença aberta foi encontrado. Tente outro termo ou pesquise em inglês."));
+    return;
+  }
   for (const item of results) {
     let url;
     try { url = new URL(item.url); } catch { continue; }
@@ -193,12 +239,21 @@ function desenharResultadosAudio(results) {
     const card = node("article", "media-result");
     const details = node("div", "media-result-details");
     details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "", item.source || "Fonte aberta"));
-    const link = node("a", "media-result-link", "Abrir áudio ↗");
+    const player = node("audio", "media-audio-player");
+    player.controls = true;
+    player.preload = "none";
+    player.src = url.href;
+    player.setAttribute("aria-label", "Reproduzir " + (item.title || "áudio"));
+    player.addEventListener("error", () => {
+      const note = node("small", "muted", "Este arquivo não pôde ser reproduzido aqui. Use o link para abrir a fonte.");
+      if (!card.contains(note)) card.appendChild(note);
+    }, { once: true });
+    const link = node("a", "media-result-link", "Abrir ou salvar áudio ↗");
     link.href = url.href;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.setAttribute("aria-label", "Abrir " + (item.title || "áudio") + " em nova aba");
-    card.append(details, link);
+    card.append(details, player, link);
     area.appendChild(card);
   }
 }
