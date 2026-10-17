@@ -13,7 +13,7 @@ function aplicarTema(tema,persistir=true){
   const toggle=$("#theme-toggle"),icon=$("#theme-toggle-icon"),meta=$("#theme-color-meta");
   if(toggle){toggle.setAttribute("aria-label",isLight?"Ativar tema escuro":"Ativar tema claro");toggle.title=isLight?"Ativar tema escuro":"Ativar tema claro";toggle.setAttribute("aria-pressed",String(!isLight));}
   if(icon){icon.textContent=isLight?"☼":"☾";icon.style.display="inline-block";icon.style.fontSize="23px";}
-  if(meta)meta.setAttribute("content",isLight?"#f5f4ef":"#14191a");
+  if(meta)meta.setAttribute("content",isLight?"#f4f6fa":"#141a23");
   document.querySelectorAll("[data-theme-choice]").forEach(button=>button.setAttribute("aria-checked",String(button.dataset.themeChoice===selecionado)));
 }
 let temaInicial="light";
@@ -30,7 +30,7 @@ document.querySelectorAll("[data-view]").forEach(el=>el.addEventListener("click"
 $("#mobile-more-toggle")?.addEventListener("click",event=>{event.preventDefault();const menu=$("#mobile-more-menu"),button=$("#mobile-more-toggle");if(!menu||!button)return;menu.hidden=!menu.hidden;button.setAttribute("aria-expanded",String(!menu.hidden));});
 document.addEventListener("click",event=>{const menu=$("#mobile-more-menu"),toggle=$("#mobile-more-toggle");if(!menu||!toggle||menu.hidden)return;if(!menu.contains(event.target)&&!toggle.contains(event.target)){menu.hidden=true;toggle.setAttribute("aria-expanded","false");}});
 function setLoginStatus(message,isError=false){const el=$("#login-status");if(el){el.textContent=message;el.classList.toggle("error-text",isError);}}
-function setApiStatus(selector,message,isError=false){const el=$(selector);if(el){el.textContent=message;el.classList.toggle("error-text",isError);el.classList.toggle("is-thinking",!isError&&/pensando|processando|gerando/i.test(String(message||"")));}}
+function setApiStatus(selector,message,isError=false){const el=$(selector);if(el){el.textContent=message;el.classList.toggle("error-text",isError);el.classList.toggle("is-thinking",!isError&&/pensando|processando|gerando|preparando|carregando/i.test(String(message||"")));}}
 async function api(path,options={}){if(!session?.access_token)throw new Error("Entre na sua conta novamente.");const response=await fetch(path,{...options,headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.access_token,...(options.headers||{})}});let body={};try{body=await response.json()}catch{}if(!response.ok)throw new Error(body.error||"Não foi possível concluir a operação.");return body;}
 function formatBRL(value){return Number(value||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
 function node(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=text;return el;}
