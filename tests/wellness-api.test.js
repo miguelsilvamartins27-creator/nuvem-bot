@@ -24,7 +24,7 @@ describe('Nuvem Life: fitness and nutrition', () => {
     assert.ok(source.includes("express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '4mb' })"));
     assert.ok(source.includes('resize({ width: 1280, height: 1280'));
     assert.ok(source.includes("modalidade: 'visao'"));
-    assert.ok(source.includes('estimativa visual'));
+    assert.match(source, /[Ee]stimativa visual/);
   });
 
   it('creates user-owned records with row-level security', async () => {
