@@ -46,8 +46,8 @@ describe('Nuvem Fit exercise library', () => {
 
   it('invalidates the old cached app shell', async () => {
     const sw = await fs.readFile(swUrl, 'utf8');
-    assert.ok(sw.includes('nuvem-shell-v31'));
+    assert.ok(sw.includes('nuvem-shell-v32'));
     assert.ok(sw.includes('styles.css?v=27'));
-    assert.ok(sw.includes('app.js?v=30'));
+    assert.ok(sw.includes('app.js?v=31'));
   });
 });
