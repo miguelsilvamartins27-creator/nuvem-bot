@@ -1,6 +1,7 @@
 const labels={inicio:"Início",ia:"Assistente IA",figurinhas:"Estúdio de figurinhas",midia:"Central de mídia",fit:"Área Fit",dieta:"Nutrição",financas:"Finanças",lembretes:"Lembretes",historico:"Histórico",config:"Configurações"};
 let supabaseClient=null, session=null, busy=false, vapidPublicKey='';
-const $=selector=>document.querySelector(selector);\n
+const $=selector=>document.querySelector(selector);
+
 /* Aparência: alternância rápida e preferência persistente */
 const THEME_STORAGE_KEY="nuvem-theme";
 function aplicarTema(tema, persistir=true){
