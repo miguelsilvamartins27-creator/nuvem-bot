@@ -705,32 +705,77 @@ $("#audio-form")?.addEventListener("submit", async event => {
 });
 let audioEditBlob = null;
 let audioEditObjectUrl = "";
+function abrirEditorAudio(item, modo = "edit") {
+  const params = new URLSearchParams();
+  if (item?.title) params.set("title", String(item.title).slice(0, 180));
+  if (item?.url) params.set("source", item.url);
+  if (modo === "send") params.set("action", "send");
+  const tab = window.open("/app/audio-editor" + (params.size ? "?" + params.toString() : ""), "_blank");
+  if (tab) tab.opener = null;
+  else setApiStatus("#audio-search-status", "O navegador bloqueou a nova aba. Permita pop-ups para abrir o editor.", true);
+}
+async function baixarResultadoAudio(item, button) {
+  if (!session?.access_token) return setApiStatus("#audio-search-status", "Entre na sua conta para baixar áudio.", true);
+  const previous=button.textContent; button.disabled=true; button.textContent="Baixando…";
+  try {
+    const response=await fetch("/api/app/media/audio/download",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json"},body:JSON.stringify({url:item.url}),cache:"no-store"});
+    if(!response.ok){let body={};try{body=await response.json()}catch{}throw new Error(body.error||"Não foi possível baixar este arquivo.")}
+    const blob=await response.blob(); if(!blob.size)throw new Error("O arquivo recebido está vazio.");
+    const objectUrl=URL.createObjectURL(blob),link=document.createElement("a");link.href=objectUrl;link.download=((item.title||"nuvem-audio").replace(/[^\p{L}\p{N}._ -]/gu,"").trim().slice(0,80)||"nuvem-audio")+".mp3";document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+    setApiStatus("#audio-search-status","Download iniciado: "+(item.title||"áudio")+".");
+  }catch(error){setApiStatus("#audio-search-status",error.message||"Falha no download.",true)}
+  finally{button.disabled=false;button.textContent=previous}
+}
+async function enviarResultadoAudioWhatsapp(item, button) {
+  if (!session?.access_token) return setApiStatus("#audio-search-status", "Entre na sua conta para enviar áudio.", true);
+  if (!item?.downloadable || !item?.url) { abrirEditorAudio(item, "send"); return; }
+  if (!confirm("Enviar este arquivo de áudio diretamente para o WhatsApp conectado?")) return;
+  button.disabled = true; const previous = button.textContent; button.textContent = "Enviando…";
+  try {
+    const source = new URL(item.url); const allowed = source.protocol === "https:" && (source.hostname === "upload.wikimedia.org" || source.hostname === "archive.org");
+    if (!allowed) throw new Error("Esta fonte não permite envio direto. Abra o editor para importar um arquivo compatível.");
+    const response = await fetch("/api/app/media/audio/download", { method:"POST", headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json"}, body:JSON.stringify({url:source.href}), cache:"no-store" });
+    if (!response.ok) { let body={}; try { body=await response.json(); } catch {} throw new Error(body.error || "Não foi possível obter o arquivo original. Abra o editor."); }
+    const blob = await response.blob();
+    if (!blob.size || blob.size > 12*1024*1024) throw new Error("O arquivo precisa ter até 12 MB para envio direto. Use o editor para cortar um trecho.");
+    const result = await fetch("/api/app/media/audio/send", { method:"POST", headers:{Authorization:"Bearer "+session.access_token,"Content-Type":blob.type||"application/octet-stream"}, body:blob, cache:"no-store" });
+    let body={}; try { body=await result.json(); } catch {}
+    if (!result.ok) throw new Error(body.error || "Não foi possível enviar o áudio.");
+    setApiStatus("#audio-search-status", body.message || "Áudio enviado ao WhatsApp conectado.");
+  } catch (error) { setApiStatus("#audio-search-status", error.message || "Falha ao enviar o áudio.", true); }
+  finally { button.disabled = false; button.textContent = previous; }
+}
 function desenharResultadosAudio(results) {
-  const area = $("#audio-search-results");
-  if (!area) return;
-  area.replaceChildren();
+  const area = $("#audio-search-results"); if (!area) return; area.replaceChildren();
   if (!results.length) { area.appendChild(node("div", "audio-empty-state", "Não encontrei resultados desta vez. Tente outro termo ou pesquise também em inglês.")); return; }
   let shown = 0;
   for (const item of results) {
     let url; try { url = new URL(item.url); } catch { continue; }
     if (url.protocol !== "https:") continue;
     const host = url.hostname.toLowerCase().replace(/^www\./, "");
-    const trusted = ["youtube.com","m.youtube.com","music.youtube.com","youtu.be","youtube-nocookie.com","soundcloud.com","m.soundcloud.com","upload.wikimedia.org","archive.org"].includes(host);
-    if (!trusted) continue;
-    const card = node("article", "media-result audio-result-card");
-    const media = node("div", "audio-result-media");
-    let thumbnailUrl = "";
+    const trusted = ["youtube.com","m.youtube.com","music.youtube.com","youtu.be","youtube-nocookie.com","soundcloud.com","m.soundcloud.com","upload.wikimedia.org","archive.org"].includes(host); if (!trusted) continue;
+    const card = node("article", "media-result audio-result-card"); const media = node("div", "audio-result-media"); let thumbnailUrl = "";
     try { const candidate = new URL(item.thumbnail || ""); const imageHost = candidate.hostname.toLowerCase().replace(/^www\./, ""); const validImageHost = ["i.ytimg.com","img.youtube.com","upload.wikimedia.org","archive.org"].includes(imageHost) || imageHost.endsWith(".sndcdn.com") || imageHost === "soundcloud.com"; if (candidate.protocol === "https:" && validImageHost) thumbnailUrl = candidate.href; } catch {}
-    if (thumbnailUrl) { const image = document.createElement("img"); image.src = thumbnailUrl; image.alt = "Imagem de " + (item.title || "resultado pesquisado"); image.loading = "lazy"; image.referrerPolicy = "no-referrer"; image.onerror = () => { image.remove(); media.classList.add("audio-result-media-fallback"); media.textContent = "♫"; }; media.appendChild(image); }
+    if (thumbnailUrl) { const image = document.createElement("img"); image.src = thumbnailUrl; image.alt = "Capa de " + (item.title || "resultado"); image.loading = "lazy"; image.referrerPolicy = "no-referrer"; image.onerror = () => { image.remove(); media.classList.add("audio-result-media-fallback"); media.textContent = "♫"; }; media.appendChild(image); }
     else { media.classList.add("audio-result-media-fallback"); media.appendChild(node("span", "", item.source?.includes("YouTube") ? "▶" : "♫")); }
     const content = node("div", "audio-result-content"); const details = node("div", "media-result-details");
-    details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "audio-result-source", item.source || "Fonte"), node("small", "muted", item.duration ? "Duração: " + Math.floor(item.duration / 60) + ":" + String(Math.floor(item.duration % 60)).padStart(2, "0") : (item.kind === "open" ? "Arquivo de áudio com licença indicada pela fonte" : "Prévia externa · consulte as opções da plataforma")));
-    content.appendChild(details);
+    details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "audio-result-source", item.source || "Fonte"), node("small", "muted", item.duration ? "Duração: " + Math.floor(item.duration / 60) + ":" + String(Math.floor(item.duration % 60)).padStart(2, "0") : (item.downloadable ? "Arquivo aberto · confira a licença" : "Prévia externa · download depende da plataforma"))); content.appendChild(details);
     if (item.embedUrl) { try { const embed = new URL(item.embedUrl); if (embed.protocol === "https:" && embed.hostname === "www.youtube-nocookie.com" && /^\/embed\/[\w-]{11}$/.test(embed.pathname)) { const frame = document.createElement("iframe"); frame.className = "audio-result-embed"; frame.src = embed.href; frame.title = "Prévia: " + (item.title || "resultado de áudio"); frame.loading = "lazy"; frame.referrerPolicy = "strict-origin-when-cross-origin"; frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"; frame.allowFullscreen = true; content.appendChild(frame); } } catch {} }
     else if (item.downloadable === true && ["upload.wikimedia.org","archive.org"].includes(host)) { const player = node("audio", "media-audio-player"); player.controls = true; player.preload = "none"; player.src = url.href; player.setAttribute("aria-label", "Reproduzir " + (item.title || "áudio")); content.appendChild(player); }
-    const actions = node("div", "audio-result-actions"); const sourceLink = node("a", "media-result-link", item.embedUrl ? "▶ Ver/ouvir no YouTube ↗" : (host.includes("soundcloud") ? "▶ Ouvir no SoundCloud ↗" : "Abrir na fonte ↗"));
-    sourceLink.href = url.href; sourceLink.target = "_blank"; sourceLink.rel = "noopener noreferrer"; sourceLink.setAttribute("aria-label", "Abrir " + (item.title || "áudio") + " na fonte original"); actions.appendChild(sourceLink);
-    if (item.downloadable === true && ["upload.wikimedia.org","archive.org"].includes(host)) { const downloadLink = node("a", "media-result-download", "↓ Baixar áudio"); downloadLink.href = url.href; downloadLink.target = "_blank"; downloadLink.rel = "noopener noreferrer"; downloadLink.setAttribute("download", ((item.title || "nuvem-audio").replace(/[^\p{L}\p{N}._ -]/gu, "").trim().slice(0, 80) || "nuvem-audio") + ".mp3"); downloadLink.setAttribute("aria-label", "Baixar ou salvar " + (item.title || "áudio") + " da fonte aberta"); actions.appendChild(downloadLink); }
+    const actions = node("div", "audio-result-actions");
+    let download;
+    if (item.downloadable === true) {
+      download = node("button", "media-result-download", "↓ Baixar"); download.type = "button";
+      download.addEventListener("click", () => baixarResultadoAudio(item, download));
+      download.title = "Baixar arquivo de áudio da fonte aberta";
+    } else {
+      download = node("a", "media-result-download", "↗ Baixar na fonte"); download.href = url.href; download.target = "_blank"; download.rel = "noopener noreferrer";
+      download.setAttribute("aria-label", "Abrir a plataforma para ver as opções de download");
+    }
+    actions.appendChild(download);
+    const edit = node("button", "audio-action-button", "✂ Editar"); edit.type = "button"; edit.addEventListener("click", () => abrirEditorAudio(item, "edit")); actions.appendChild(edit);
+    const send = node("button", "audio-action-button audio-action-send", "↗ WhatsApp"); send.type = "button"; send.addEventListener("click", () => enviarResultadoAudioWhatsapp(item, send)); actions.appendChild(send);
+    const sourceLink = node("a", "audio-source-link", item.embedUrl ? "Prévia / fonte ↗" : "Abrir fonte ↗"); sourceLink.href = url.href; sourceLink.target = "_blank"; sourceLink.rel = "noopener noreferrer"; actions.appendChild(sourceLink);
     content.appendChild(actions); card.append(media, content); area.appendChild(card); shown++;
   }
   if (!shown) area.appendChild(node("p", "muted", "Os resultados recebidos não tinham links seguros para exibir. Tente outra pesquisa."));
