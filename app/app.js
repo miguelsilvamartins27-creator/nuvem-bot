@@ -88,10 +88,59 @@ function addTypingIndicator(){
 function removeTypingIndicator(){document.querySelectorAll("#chat-messages .typing-message").forEach(el=>el.remove());}
 function updatePromptSuggestions(show){const suggestions=$("#ai-prompt-suggestions");if(suggestions)suggestions.hidden=!show;}
 function renderChatList(){const area=$("#chat-list");if(!area)return;area.replaceChildren();if(!chatList.length){area.appendChild(node("p","chat-list-empty","Suas conversas aparecerão aqui."));return;}for(const chat of chatList){const row=node("div","chat-list-row"+(chat.id===activeChatId?" active":"")),pick=node("button","chat-list-pick"),icon=node("span","chat-list-icon"),title=node("span","chat-list-title",chat.title||"Nova conversa");pick.type="button";pick.append(icon,title);pick.addEventListener("click",async()=>{activeChatId=chat.id;renderChatList();await loadChat();});row.appendChild(pick);area.appendChild(row);}}
-async function loadChats(){const area=$("#chat-messages");try{let data=await api("/api/app/chats");chatList=data.chats||[];chatMigrationMissing=false;if(!chatList.length){const created=await api("/api/app/chats",{method:"POST",body:JSON.stringify({title:"Nova conversa"})});chatList=[created.chat];}activeChatId=chatList[0]?.id||null;renderChatList();if(activeChatId)await loadChat();else{area?.replaceChildren();addChatMessage("assistant","Olá! Sou a Nuvem. Como posso ajudar?");}}catch(e){chatMigrationMissing=true;chatList=[];renderChatList();if(area){area.replaceChildren();addChatMessage("assistant",e.message);}updatePromptSuggestions(true);setApiStatus("#chat-status","Para ativar o histórico de vários chats, aplique a migração SQL de conversas no Supabase.",true);}}
+async function loadChats(){
+  const area=$("#chat-messages");
+  try{
+    const data=await api("/api/app/chats");
+    chatList=data.chats||[];chatMigrationMissing=Boolean(data.legacy);
+    if(!chatList.length){
+      const created=await api("/api/app/chats",{method:"POST",body:JSON.stringify({title:"Nova conversa"})});
+      chatList=[created.chat];
+    }
+    activeChatId=chatList[0]?.id||null;renderChatList();
+    const newButton=$("#chat-new"),deleteButton=$("#chat-delete");
+    if(newButton)newButton.disabled=!session||chatMigrationMissing;
+    if(deleteButton)deleteButton.disabled=!session||chatMigrationMissing;
+    if(activeChatId)await loadChat();
+    else{area?.replaceChildren();addChatMessage("assistant","Olá! Sou a Nuvem. Como posso ajudar?");}
+    if(chatMigrationMissing)setApiStatus("#chat-status","Assistente pronto. O histórico está no modo simples; você pode conversar normalmente.",false);
+    else if(activeChatId)setApiStatus("#chat-status","Conversa pronta. Pode escrever sua mensagem.",false);
+    updatePromptSuggestions(Boolean(!area?.querySelector(".user-message")));
+  }catch(e){
+    chatMigrationMissing=false;chatList=[];activeChatId=null;renderChatList();
+    if(area){area.replaceChildren();addChatMessage("assistant","Não consegui abrir seu histórico. "+e.message);}
+    updatePromptSuggestions(true);
+    setApiStatus("#chat-status",e.message||"Não foi possível carregar suas conversas.",true);
+    const input=$("#chat-input"),send=$("#chat-send");
+    if(session&&input)input.disabled=false;
+    if(session&&send)send.disabled=false;
+  }
+}
 async function loadChat(){const area=$("#chat-messages");if(!area)return;area.replaceChildren();if(!activeChatId){addChatMessage("assistant","Crie uma conversa para começar.");return;}try{const data=await api("/api/app/chat?conversation_id="+encodeURIComponent(activeChatId)+"&limit=40");if(!data.messages.length)addChatMessage("assistant","Olá! Sou a Nuvem. Como posso ajudar?");for(const m of data.messages)addChatMessage(m.role,m.content);const current=chatList.find(c=>c.id===activeChatId);if(current&&$("#chat-current-title"))$("#chat-current-title").textContent=current.title||"Nova conversa";}catch(e){addChatMessage("assistant",e.message);}}
-async function createChat(){if(!session||busy)return;const button=$("#chat-new");if(button)button.disabled=true;try{const data=await api("/api/app/chats",{method:"POST",body:JSON.stringify({title:"Nova conversa"})});chatList.unshift(data.chat);activeChatId=data.chat.id;renderChatList();await loadChat();setApiStatus("#chat-status","Nova conversa pronta.");$("#chat-input")?.focus();}catch(e){setApiStatus("#chat-status",e.message,true);}finally{if(button)button.disabled=!session;}}
-async function deleteChat(){if(!session||!activeChatId||busy)return;if(!confirm("Excluir esta conversa e todas as mensagens dela? Essa ação não pode ser desfeita."))return;const button=$("#chat-delete");if(button)button.disabled=true;try{await api("/api/app/chats/"+encodeURIComponent(activeChatId),{method:"DELETE"});chatList=chatList.filter(c=>c.id!==activeChatId);if(!chatList.length){const data=await api("/api/app/chats",{method:"POST",body:JSON.stringify({title:"Nova conversa"})});chatList=[data.chat];}activeChatId=chatList[0].id;renderChatList();await loadChat();setApiStatus("#chat-status","Conversa excluída.");}catch(e){setApiStatus("#chat-status",e.message,true);}finally{if(button)button.disabled=!session;}}
+async function createChat(){
+  if(!session||busy)return;
+  if(chatMigrationMissing){setApiStatus("#chat-status","A conversa principal já está disponível. Para criar conversas separadas, aplique a migração de múltiplas conversas no Supabase.",true);return;}
+  const button=$("#chat-new");if(button)button.disabled=true;
+  try{
+    const data=await api("/api/app/chats",{method:"POST",body:JSON.stringify({title:"Nova conversa"})});
+    chatList.unshift(data.chat);activeChatId=data.chat.id;renderChatList();await loadChat();
+    setApiStatus("#chat-status","Nova conversa pronta.");$("#chat-input")?.focus();
+  }catch(e){setApiStatus("#chat-status",e.message,true);}
+  finally{if(button)button.disabled=!session||chatMigrationMissing;}
+}
+async function deleteChat(){
+  if(!session||!activeChatId||busy)return;
+  if(chatMigrationMissing){setApiStatus("#chat-status","A conversa principal não pode ser excluída neste modo simples.",true);return;}
+  if(!confirm("Excluir esta conversa e todas as mensagens dela? Essa ação não pode ser desfeita."))return;
+  const button=$("#chat-delete");if(button)button.disabled=true;
+  try{
+    await api("/api/app/chats/"+encodeURIComponent(activeChatId),{method:"DELETE"});
+    chatList=chatList.filter(c=>c.id!==activeChatId);
+    if(!chatList.length){const data=await api("/api/app/chats",{method:"POST",body:JSON.stringify({title:"Nova conversa"})});chatList=[data.chat];}
+    activeChatId=chatList[0].id;renderChatList();await loadChat();setApiStatus("#chat-status","Conversa excluída.");
+  }catch(e){setApiStatus("#chat-status",e.message,true);}
+  finally{if(button)button.disabled=!session||chatMigrationMissing;}
+}
 $("#chat-new")?.addEventListener("click",createChat);
 $("#chat-delete")?.addEventListener("click",deleteChat);
 $("#chat-audio-button")?.addEventListener("click",()=>$("#chat-audio-file")?.click());
@@ -298,13 +347,35 @@ function drawExpenses(expenses){
     row.append(info,amount,remove);list.appendChild(row);
   }
 }
-async function loadExpenses(){const data=await api("/api/app/expenses");drawExpenses(data.expenses);}
+async function loadExpenses(){
+  try{const data=await api("/api/app/expenses");drawExpenses(data.expenses);}
+  catch(e){setApiStatus("#expense-status","Finanças indisponíveis: "+e.message,true);}
+}
 async function addExpense(event){event.preventDefault();if(!session)return;const description=$("#expense-description").value.trim(),amount=Number($("#expense-amount").value);const button=$("#expense-submit");button.disabled=true;setApiStatus("#expense-status","Salvando…");try{await api("/api/app/expenses",{method:"POST",body:JSON.stringify({description,amount,spent_at:$("#expense-date")?.value||new Date().toISOString().slice(0,10),category:$("#expense-category-input")?.value||"Outros"})});$("#expense-form").reset();if($("#expense-date"))$("#expense-date").value=localDateHoje();await loadExpenses();setApiStatus("#expense-status","Despesa salva com segurança.");}catch(e){setApiStatus("#expense-status",e.message,true);}finally{button.disabled=false;}}
 function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;["#chat-new","#chat-delete","#chat-audio-button"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const expenseDate=$("#expense-date");if(expenseDate)expenseDate.disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable","#fit-title","#fit-date","#fit-kind","#fit-notes","#fit-add-exercise","#fit-save","#fit-ai-question","#fit-ai-submit","#meal-ai-question","#meal-ai-submit","#meal-title","#meal-date","#meal-kind","#meal-notes","#meal-add-food","#meal-save","#meal-photo","#meal-photo-submit","#sticker-editor-file","#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size","#sticker-remove-bg","#sticker-add-pack","#sticker-send-current","#sticker-pack-name","#sticker-create-pack","#sticker-pack-select","#sticker-send-pack","#sticker-delete-pack","#sticker-video-file","#sticker-video-action","#sticker-video-submit","#audio-file","#audio-submit","#audio-search-query","#audio-search-submit","#audio-editor-file","#audio-trim-start","#audio-trim-end","#audio-trim-submit","#audio-link-url","#audio-link-submit","#chat-audio-file"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";setStickerEditorControls();}
-async function loadProfile(){const data=await api("/api/app/me");const p=data.profile||{};$("#profile-name").value=p.display_name||"";$("#profile-assistant").value=p.assistant_name||"Nuvem";$("#profile-language").value=p.language||"pt-BR";$("#profile-style").value=p.response_style||"balanced";["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>$(s).disabled=false);setApiStatus("#profile-status","Preferências carregadas.");}
+async function loadProfile(){
+  try{
+    const data=await api("/api/app/me"),p=data.profile||{};
+    $("#profile-name").value=p.display_name||"";$("#profile-assistant").value=p.assistant_name||"Nuvem";
+    $("#profile-language").value=p.language||"pt-BR";$("#profile-style").value=p.response_style||"balanced";
+    ["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>$(s).disabled=false);
+    setApiStatus("#profile-status","Preferências carregadas.");
+  }catch(e){setApiStatus("#profile-status","Perfil indisponível: "+e.message,true);}
+}
 async function saveProfile(event){event.preventDefault();if(!session)return;const button=$("#profile-save");button.disabled=true;setApiStatus("#profile-status","Salvando preferências…");try{await api("/api/app/me",{method:"PUT",body:JSON.stringify({display_name:$("#profile-name").value,assistant_name:$("#profile-assistant").value,language:$("#profile-language").value,response_style:$("#profile-style").value})});setApiStatus("#profile-status","Preferências salvas.");}catch(e){setApiStatus("#profile-status",e.message,true);}finally{button.disabled=false;}}
 $("#profile-form").addEventListener("submit",saveProfile);
-async function afterLogin(user){session=(await supabaseClient.auth.getSession()).data.session;setAuthenticatedUI(user);if(!session)return;window.dispatchEvent(new Event("nuvem:authenticated"));try{await Promise.all([loadProfile(),loadChats(),loadExpenses(),loadHistory(),loadReminders(),loadWellnessRecords()]);setLoginStatus("Sessão validada.");}catch(e){setAuthenticatedUI(null);setLoginStatus(e.message,true);await supabaseClient.auth.signOut();}}
+async function afterLogin(user){
+  session=(await supabaseClient.auth.getSession()).data.session;
+  setAuthenticatedUI(user);if(!session)return;
+  window.dispatchEvent(new Event("nuvem:authenticated"));
+  setApiStatus("#chat-status","Carregando suas conversas…");
+  const jobs=[loadProfile(),loadChats(),loadExpenses(),loadHistory(),loadReminders(),loadWellnessRecords()];
+  const results=await Promise.allSettled(jobs);
+  const failed=results.some(result=>result.status==="rejected");
+  setLoginStatus(failed?"Você entrou, mas alguns recursos precisam de atenção.":"Sessão validada.");
+  const input=$("#chat-input"),send=$("#chat-send");
+  if(input)input.disabled=false;if(send)send.disabled=false;
+}
 async function startApp(){try{const configResponse=await fetch("/api/app/config",{cache:"no-store"});const config=await configResponse.json();if(!configResponse.ok)throw new Error(config.error||"O servidor ainda não foi configurado.");vapidPublicKey=config.vapidPublicKey||'';if(!window.supabase?.createClient)throw new Error("A biblioteca de autenticação não carregou. Verifique sua conexão.");supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});$("#login-status").textContent="Entre com o e-mail autorizado.";const {data:{session:current}}=await supabaseClient.auth.getSession();if(current){session=current;await afterLogin(current.user);}supabaseClient.auth.onAuthStateChange((_event,newSession)=>{if(newSession){session=newSession;setAuthenticatedUI(newSession.user);}else{session=null;setAuthenticatedUI(null);}});}catch(e){setLoginStatus(e.message,true);}}
 $("#login-form").addEventListener("submit",async event=>{event.preventDefault();if(!supabaseClient){setLoginStatus("A autenticação ainda não está configurada no servidor.",true);return;}const button=$("#login-submit");button.disabled=true;setLoginStatus("Validando sua conta…");try{const {data,error}=await supabaseClient.auth.signInWithPassword({email:$("#login-email").value.trim(),password:$("#login-password").value});if(error)throw error;session=data.session;await afterLogin(data.user);}catch(e){setLoginStatus(e.message||"Não foi possível entrar.",true);}finally{button.disabled=false;}});
 $("#logout-button").addEventListener("click",async()=>{if(supabaseClient)await supabaseClient.auth.signOut();session=null;setAuthenticatedUI(null);setLoginStatus("Você saiu da sua conta.");});
