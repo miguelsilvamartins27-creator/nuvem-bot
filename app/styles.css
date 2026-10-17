@@ -407,3 +407,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 #view-fit .fit-subview,#view-dieta .fit-subview{min-width:0}
 @media(max-width:900px) and (min-width:761px){.sidebar .nav-group .nav-item{font-size:11px;padding-left:9px;gap:8px}.nav-group .side-label{font-size:8px}}
 @media(max-width:760px){#view-inicio .welcome-row{min-height:170px}.nav-group .side-label{display:none}}
+
+/* Audio search and editor */
+.audio-search-hints{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.audio-query-chip{border:1px solid var(--line);background:var(--panel-2,#151719);color:var(--text);border-radius:999px;padding:8px 12px;cursor:pointer;font:inherit;font-size:12px}
+.audio-query-chip:hover{border-color:var(--accent,#b7ff3a)}
+.audio-result-embed{display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:10px;margin:12px 0 8px;background:#000}
+.audio-trim-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.audio-editor-preview{display:grid;gap:12px;margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:12px}
+.audio-editor-preview audio{width:100%}
+.audio-editor-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.audio-editor-actions button{margin-left:auto}
+@media(max-width:600px){.audio-trim-fields{grid-template-columns:1fr}.audio-editor-actions{align-items:stretch;flex-direction:column}.audio-editor-actions button{margin-left:0}}
