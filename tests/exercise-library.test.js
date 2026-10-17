@@ -32,13 +32,13 @@ describe('Nuvem Fit exercise library', () => {
     assert.ok(snippet.includes("path.join(root, 'data', 'exercicios', 'aliases.json')"));
   });
 
-  it('connects searching, exercise details, animated demos and adding to the workout builder', async () => {
+  it('connects searching, exercise details, animated demos and folder saving', async () => {
     const html = await fs.readFile(htmlUrl, 'utf8');
     const js = await fs.readFile(jsUrl, 'utf8');
     for (const id of ['exercise-search-form', 'exercise-search-input', 'exercise-library-results', 'exercise-detail', 'fit-form']) {
       assert.ok(html.includes('id="' + id + '"'), 'missing UI element: ' + id);
     }
-    for (const feature of ['/api/app/exercises?search=', 'showExerciseDetail', 'addExerciseRow', 'data-exercise-query']) {
+    for (const feature of ['/api/app/exercises?search=', 'showExerciseDetail', 'addExerciseToCurrentFolder', 'data-exercise-query']) {
       assert.ok(js.includes(feature), 'missing UI wiring: ' + feature);
     }
     assert.ok(html.includes('Demonstrações visuais fornecidas pela ExerciseDB'));
@@ -46,8 +46,8 @@ describe('Nuvem Fit exercise library', () => {
 
   it('invalidates the old cached app shell', async () => {
     const sw = await fs.readFile(swUrl, 'utf8');
-    assert.ok(sw.includes('nuvem-shell-v13'));
-    assert.ok(sw.includes('styles.css?v=13'));
-    assert.ok(sw.includes('app.js?v=13'));
+    assert.ok(sw.includes('nuvem-shell-v14'));
+    assert.ok(sw.includes('styles.css?v=14'));
+    assert.ok(sw.includes('app.js?v=14'));
   });
 });
