@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 
 const read = path => fs.readFile(new URL(path, import.meta.url), "utf8");
+const cssIncludesMobileMenu = css => css.includes('.mobile-more-menu:not([hidden])');
 
 describe("Nuvem productivity workspace", () => {
   it("provides the tasks and notes views and accessible controls", async () => {
@@ -38,11 +39,11 @@ describe("Nuvem productivity workspace", () => {
     const html = await read("../app/index.html");
     const sw = await read("../app/sw.js");
     assert.ok(html.includes("productivity.css?v=2"));
-    assert.ok(html.includes("polish.css?v=5"));
+    assert.ok(html.includes("polish.css?v=6"));
     assert.ok(html.includes("productivity.js?v=2"));
-    assert.ok(sw.includes("nuvem-shell-v35"));
+    assert.ok(sw.includes("nuvem-shell-v36"));
     assert.ok(sw.includes("/app/productivity.css?v=2"));
     assert.ok(sw.includes("/app/productivity.js?v=2"));
-    assert.ok(sw.includes("/app/polish.css?v=5"));
+    assert.ok(sw.includes("/app/polish.css?v=6"));
   });
 });
