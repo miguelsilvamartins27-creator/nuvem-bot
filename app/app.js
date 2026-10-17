@@ -1,6 +1,21 @@
 const labels={inicio:"Início",ia:"Assistente IA",figurinhas:"Estúdio de figurinhas",midia:"Central de mídia",fit:"Área Fit",dieta:"Nutrição",financas:"Finanças",lembretes:"Lembretes",historico:"Histórico",organizacao:"Tarefas e notas",config:"Configurações"};
 let supabaseClient=null, session=null, busy=false, vapidPublicKey='';
 const $=selector=>document.querySelector(selector);
+function createRobotIcon(){
+  const ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
+  svg.setAttribute("viewBox","0 0 24 24");svg.setAttribute("fill","none");svg.setAttribute("stroke","currentColor");
+  svg.setAttribute("stroke-width","1.7");svg.setAttribute("stroke-linecap","round");svg.setAttribute("stroke-linejoin","round");
+  svg.setAttribute("aria-hidden","true");svg.classList.add("nuvem-robot-svg");
+  const shapes=[["path",{d:"M12 3v2"}],["circle",{cx:"12",cy:"2.7",r:"1",fill:"currentColor",stroke:"none"}],["rect",{x:"4.2",y:"6",width:"15.6",height:"13",rx:"4"}],["path",{d:"M2.5 10v5M21.5 10v5M8 22v-3M16 22v-3"}],["circle",{cx:"9",cy:"11.5",r:"1",fill:"currentColor",stroke:"none"}],["circle",{cx:"15",cy:"11.5",r:"1",fill:"currentColor",stroke:"none"}],["path",{d:"M9 15h6"}]];
+  for(const [tag,attrs] of shapes){const shape=document.createElementNS(ns,tag);for(const [key,value] of Object.entries(attrs))shape.setAttribute(key,value);svg.appendChild(shape);}
+  return svg;
+}
+function createFolderIcon(){
+  const ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
+  svg.setAttribute("viewBox","0 0 24 24");svg.setAttribute("fill","none");svg.setAttribute("stroke","currentColor");svg.setAttribute("stroke-width","1.8");svg.setAttribute("stroke-linecap","round");svg.setAttribute("stroke-linejoin","round");svg.setAttribute("aria-hidden","true");svg.classList.add("nuvem-folder-svg");
+  for(const [tag,attrs] of [["path",{d:"M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"}],["path",{d:"M3.5 10h17"}]]){const el=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);svg.appendChild(el);}
+  return svg;
+}
 
 /* Aparência: inicialização antecipada + eventos delegados para sobreviver a atualizações da interface */
 const THEME_STORAGE_KEY="nuvem-theme";
@@ -13,7 +28,7 @@ function aplicarTema(tema,persistir=true){
   const toggle=$("#theme-toggle"),icon=$("#theme-toggle-icon"),meta=$("#theme-color-meta");
   if(toggle){toggle.setAttribute("aria-label",isLight?"Ativar tema escuro":"Ativar tema claro");toggle.title=isLight?"Ativar tema escuro":"Ativar tema claro";toggle.setAttribute("aria-pressed",String(!isLight));}
   if(icon){icon.textContent=isLight?"☼":"☾";icon.style.display="inline-block";icon.style.fontSize="23px";}
-  if(meta)meta.setAttribute("content",isLight?"#e8e6de":"#292e2b");
+  if(meta)meta.setAttribute("content",isLight?"#e8e6de":"#171916");
   document.querySelectorAll("[data-theme-choice]").forEach(button=>button.setAttribute("aria-checked",String(button.dataset.themeChoice===selecionado)));
 }
 let temaInicial="light";
@@ -68,8 +83,8 @@ function addChatMessage(role,content){
   bubble.dataset.role=role;const body=node("div","message-content");
   if(isUser)body.textContent=String(content??"");
   else{
-    const head=node("div","assistant-message-head"),robot=node("span","assistant-robot","🤖"),name=node("span","assistant-name","Nuvem");
-    robot.setAttribute("aria-hidden","true");head.append(robot,name);bubble.appendChild(head);
+    const head=node("div","assistant-message-head"),robot=node("span","assistant-robot"),name=node("span","assistant-name","Nuvem");
+    robot.setAttribute("aria-hidden","true");robot.appendChild(createRobotIcon());head.append(robot,name);bubble.appendChild(head);
     renderAssistantContent(body,content);
   }
   bubble.appendChild(body);
@@ -86,8 +101,8 @@ function addChatMessage(role,content){
 function addTypingIndicator(){
   removeTypingIndicator();const area=$("#chat-messages");if(!area)return null;
   const bubble=node("article","chat-message assistant-message typing-message");bubble.setAttribute("aria-label","A Nuvem está pensando e preparando uma resposta");
-  const body=node("div","message-content"),head=node("div","typing-head"),robot=node("span","typing-robot","🤖"),label=node("span","typing-label","A Nuvem está pensando"),indicator=node("div","typing-indicator");
-  robot.setAttribute("aria-hidden","true");indicator.setAttribute("aria-hidden","true");
+  const body=node("div","message-content"),head=node("div","typing-head"),robot=node("span","typing-robot"),label=node("span","typing-label","A Nuvem está pensando"),indicator=node("div","typing-indicator");
+  robot.setAttribute("aria-hidden","true");robot.appendChild(createRobotIcon());indicator.setAttribute("aria-hidden","true");
   for(let i=0;i<3;i++)indicator.appendChild(node("span","typing-dot"));
   head.append(robot,label,indicator);body.appendChild(head);bubble.appendChild(body);area.appendChild(bubble);scrollChatToBottom(true);return bubble;
 }
@@ -202,10 +217,10 @@ document.querySelectorAll("[data-diet-tab]").forEach(button=>button.addEventList
 
 function renderExerciseFolders(){
   const area=$("#exercise-folder-list");if(!area)return;area.replaceChildren();
-  if(!exerciseFolders.length){const empty=node("div","exercise-library-empty");empty.append(node("span","","📁"),node("strong","","Suas pastas começam aqui"),node("small","","Crie sua primeira pasta e depois adicione os exercícios que quiser."));area.appendChild(empty);return;}
+  if(!exerciseFolders.length){const empty=node("div","exercise-library-empty");const mark=node("span","exercise-folder-mark");mark.appendChild(createFolderIcon());empty.append(mark,node("strong","","Suas pastas começam aqui"),node("small","","Crie sua primeira pasta e depois adicione os exercícios que quiser."));area.appendChild(empty);return;}
   for(const folder of exerciseFolders){
-    const card=node("article","exercise-folder-card"),icon=node("div","exercise-folder-icon","📁"),body=node("div","exercise-folder-body"),title=node("h3","",folder.name),count=node("p","",folder.exercises.length+" exercício"+(folder.exercises.length===1?"":"s")),actions=node("div","exercise-folder-actions"),open=node("button","button button-primary","Abrir pasta →"),del=node("button","button button-quiet","Excluir");
-    open.type=del.type="button";open.addEventListener("click",()=>openExerciseFolder(folder.id));del.addEventListener("click",()=>{if(!confirm("Excluir a pasta “"+folder.name+"” e os exercícios guardados nela?"))return;exerciseFolders=exerciseFolders.filter(item=>item.id!==folder.id);saveExerciseFolders();renderExerciseFolders();if(currentExerciseFolderId===folder.id){currentExerciseFolderId=null;switchFitSubpage("folders");}});
+    const card=node("article","exercise-folder-card"),icon=node("div","exercise-folder-icon"),body=node("div","exercise-folder-body"),title=node("h3","",folder.name),count=node("p","",folder.exercises.length+" exercício"+(folder.exercises.length===1?"":"s")),actions=node("div","exercise-folder-actions"),open=node("button","button button-primary","Abrir pasta →"),del=node("button","button button-quiet","Excluir");
+    icon.appendChild(createFolderIcon());open.type=del.type="button";open.addEventListener("click",()=>openExerciseFolder(folder.id));del.addEventListener("click",()=>{if(!confirm("Excluir a pasta “"+folder.name+"” e os exercícios guardados nela?"))return;exerciseFolders=exerciseFolders.filter(item=>item.id!==folder.id);saveExerciseFolders();renderExerciseFolders();if(currentExerciseFolderId===folder.id){currentExerciseFolderId=null;switchFitSubpage("folders");}});
     body.append(title,count);actions.append(open,del);card.append(icon,body,actions);area.appendChild(card);
   }
 }

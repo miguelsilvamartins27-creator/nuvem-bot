@@ -1,5 +1,5 @@
-const CACHE_NAME="nuvem-shell-v35";
-const SHELL=["/app/","/app/index.html","/app/styles.css?v=27","/app/productivity.css?v=2","/app/polish.css?v=5","/app/app.js?v=34","/app/productivity.js?v=2","/app/manifest.webmanifest","/app/icon.svg"];
+const CACHE_NAME="nuvem-shell-v36";
+const SHELL=["/app/","/app/index.html","/app/styles.css?v=27","/app/productivity.css?v=2","/app/polish.css?v=6","/app/app.js?v=35","/app/productivity.js?v=2","/app/manifest.webmanifest","/app/icon.svg"];
 const SHELL_PATHS=new Set(SHELL.map(item=>new URL(item,self.location.origin).pathname));
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith("nuvem-shell-")&&key!==CACHE_NAME).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
