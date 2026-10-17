@@ -13,7 +13,7 @@ function aplicarTema(tema,persistir=true){
   const toggle=$("#theme-toggle"),icon=$("#theme-toggle-icon"),meta=$("#theme-color-meta");
   if(toggle){toggle.setAttribute("aria-label",isLight?"Ativar tema escuro":"Ativar tema claro");toggle.title=isLight?"Ativar tema escuro":"Ativar tema claro";toggle.setAttribute("aria-pressed",String(!isLight));}
   if(icon){icon.textContent=isLight?"☼":"☾";icon.style.display="inline-block";icon.style.fontSize="23px";}
-  if(meta)meta.setAttribute("content",isLight?"#f2f5f1":"#202827");
+  if(meta)meta.setAttribute("content",isLight?"#e8e6de":"#292e2b");
   document.querySelectorAll("[data-theme-choice]").forEach(button=>button.setAttribute("aria-checked",String(button.dataset.themeChoice===selecionado)));
 }
 let temaInicial="light";
@@ -66,7 +66,12 @@ function addChatMessage(role,content){
   const area=$("#chat-messages");if(!area)return null;
   const isUser=role==="user",bubble=node("article","chat-message "+(isUser?"user-message":"assistant-message"));
   bubble.dataset.role=role;const body=node("div","message-content");
-  if(isUser)body.textContent=String(content??"");else renderAssistantContent(body,content);
+  if(isUser)body.textContent=String(content??"");
+  else{
+    const head=node("div","assistant-message-head"),robot=node("span","assistant-robot","🤖"),name=node("span","assistant-name","Nuvem");
+    robot.setAttribute("aria-hidden","true");head.append(robot,name);bubble.appendChild(head);
+    renderAssistantContent(body,content);
+  }
   bubble.appendChild(body);
   if(!isUser){
     const actions=node("div","message-actions"),copy=node("button","message-copy","Copiar");
@@ -80,10 +85,11 @@ function addChatMessage(role,content){
 }
 function addTypingIndicator(){
   removeTypingIndicator();const area=$("#chat-messages");if(!area)return null;
-  const bubble=node("article","chat-message assistant-message typing-message");bubble.setAttribute("aria-label","A Nuvem está preparando uma resposta");
-  const body=node("div","message-content"),indicator=node("div","typing-indicator");
-  indicator.setAttribute("aria-hidden","true");for(let i=0;i<3;i++)indicator.appendChild(node("span","typing-dot"));
-  body.appendChild(indicator);bubble.appendChild(body);area.appendChild(bubble);scrollChatToBottom(true);return bubble;
+  const bubble=node("article","chat-message assistant-message typing-message");bubble.setAttribute("aria-label","A Nuvem está pensando e preparando uma resposta");
+  const body=node("div","message-content"),head=node("div","typing-head"),robot=node("span","typing-robot","🤖"),label=node("span","typing-label","A Nuvem está pensando"),indicator=node("div","typing-indicator");
+  robot.setAttribute("aria-hidden","true");indicator.setAttribute("aria-hidden","true");
+  for(let i=0;i<3;i++)indicator.appendChild(node("span","typing-dot"));
+  head.append(robot,label,indicator);body.appendChild(head);bubble.appendChild(body);area.appendChild(bubble);scrollChatToBottom(true);return bubble;
 }
 function removeTypingIndicator(){document.querySelectorAll("#chat-messages .typing-message").forEach(el=>el.remove());}
 function updatePromptSuggestions(show){const suggestions=$("#ai-prompt-suggestions");if(suggestions)suggestions.hidden=!show;}
