@@ -55,7 +55,7 @@ describe('Conversão real da Central de mídia', () => {
       headers: { Authorization: 'Bearer test-token', 'Content-Type': 'image/png' },
       body: image
     });
-    assert.equal(response.status, 200, await response.text().catch(() => ''));
+    if (response.status !== 200) throw new Error('Falha na conversão: ' + response.status + ' ' + await response.text().catch(() => ''));
     assert.match(response.headers.get('content-type') || '', /image\/webp/i);
     const result = Buffer.from(await response.arrayBuffer());
     assert.ok(result.length > 20);
