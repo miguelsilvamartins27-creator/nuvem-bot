@@ -28,9 +28,10 @@ for (const reminder of reminders || []) {
   let local;
   try { local = localParts(now, reminder.timezone || 'America/Sao_Paulo'); }
   catch { local = localParts(now, 'America/Sao_Paulo'); }
-  if (reminder.remind_at.slice(0, 5) !== local.time) { skipped++; continue; }
+  const scheduledTime = reminder.remind_at.slice(0, 5);
+  if (local.time < scheduledTime) { skipped++; continue; }
   if (!reminder.repeat_daily && reminder.remind_date !== local.date) { skipped++; continue; }
-  const key = local.date + 'T' + local.time;
+  const key = local.date + 'T' + scheduledTime;
   if (reminder.last_notified_key === key) { skipped++; continue; }
 
   const { data: subscriptions, error: subError } = await supabase.from('app_push_subscriptions')
