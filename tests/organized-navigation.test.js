@@ -18,6 +18,14 @@ describe('Nuvem Fit organization and navigation', () => {
     assert.ok(html.includes('data-fit-tab="coach"'));
   });
 
+  it('separates nutrition into its own focused pages', async () => {
+    const html = await fs.readFile(htmlUrl, 'utf8');
+    const js = await fs.readFile(jsUrl, 'utf8');
+    for (const id of ['diet-subview-plate', 'diet-subview-photo', 'diet-subview-ideas', 'diet-subview-history']) assert.ok(html.includes('id=\"' + id + '\"'), 'missing nutrition page: ' + id);
+    for (const tab of ['plate', 'photo', 'ideas', 'history']) assert.ok(html.includes('data-diet-tab=\"' + tab + '\"'));
+    assert.ok(js.includes('switchDietSubpage'));
+  });
+
   it('supports creating folders, opening them, saving exercises and adding saved exercises to a workout', async () => {
     const html = await fs.readFile(htmlUrl, 'utf8');
     const js = await fs.readFile(jsUrl, 'utf8');
@@ -31,8 +39,8 @@ describe('Nuvem Fit organization and navigation', () => {
 
   it('refreshes cached assets after the navigation redesign', async () => {
     const sw = await fs.readFile(swUrl, 'utf8');
-    assert.ok(sw.includes('nuvem-shell-v14'));
-    assert.ok(sw.includes('styles.css?v=14'));
-    assert.ok(sw.includes('app.js?v=14'));
+    assert.ok(sw.includes('nuvem-shell-v15'));
+    assert.ok(sw.includes('styles.css?v=15'));
+    assert.ok(sw.includes('app.js?v=15'));
   });
 });
