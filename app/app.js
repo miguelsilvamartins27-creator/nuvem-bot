@@ -1,6 +1,23 @@
 const labels={inicio:"Início",ia:"Assistente IA",figurinhas:"Estúdio de figurinhas",midia:"Central de mídia",fit:"Área Fit",dieta:"Nutrição",financas:"Finanças",lembretes:"Lembretes",historico:"Histórico",config:"Configurações"};
 let supabaseClient=null, session=null, busy=false, vapidPublicKey='';
-const $=selector=>document.querySelector(selector);
+const $=selector=>document.querySelector(selector);\n
+/* Aparência: alternância rápida e preferência persistente */
+const THEME_STORAGE_KEY="nuvem-theme";
+function aplicarTema(tema, persistir=true){
+  const selecionado=tema==="dark"?"dark":"light";
+  document.documentElement.dataset.theme=selecionado;
+  if(persistir){try{localStorage.setItem(THEME_STORAGE_KEY,selecionado)}catch{}}
+  const isLight=selecionado==="light";
+  const toggle=$("#theme-toggle"),icon=$("#theme-toggle-icon"),meta=$("#theme-color-meta");
+  if(toggle){toggle.setAttribute("aria-label",isLight?"Ativar tema escuro":"Ativar tema claro");toggle.title=isLight?"Ativar tema escuro":"Ativar tema claro";}
+  if(icon)icon.textContent=isLight?"☀":"☾";
+  if(meta)meta.setAttribute("content",isLight?"#f6f6f4":"#101114");
+  document.querySelectorAll("[data-theme-choice]").forEach(button=>button.setAttribute("aria-checked",String(button.dataset.themeChoice===selecionado)));
+}
+aplicarTema(document.documentElement.dataset.theme||"light",false);
+$("#theme-toggle")?.addEventListener("click",()=>aplicarTema(document.documentElement.dataset.theme==="light"?"dark":"light"));
+document.querySelectorAll("[data-theme-choice]").forEach(button=>button.addEventListener("click",()=>aplicarTema(button.dataset.themeChoice)));
+
 function abrirVista(nome){if(!labels[nome])return;document.querySelectorAll(".view").forEach(el=>el.classList.toggle("active",el.id==="view-"+nome));document.querySelectorAll("[data-view]").forEach(el=>el.classList.toggle("active",el.dataset.view===nome));const crumb=$("#crumb");if(crumb)crumb.textContent=labels[nome];window.scrollTo({top:0,behavior:"smooth"});}
 document.querySelectorAll("[data-view]").forEach(el=>el.addEventListener("click",()=>abrirVista(el.dataset.view)));
 function setLoginStatus(message,isError=false){const el=$("#login-status");if(el){el.textContent=message;el.classList.toggle("error-text",isError);}}
