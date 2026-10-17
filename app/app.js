@@ -15,10 +15,54 @@ function drawHistory(){const list=$("#history-list");if(!list)return;const term=
 async function loadHistory(){const data=await api("/api/app/chat?limit=100");historyMessages=data.messages||[];drawHistory();}
 $("#history-search")?.addEventListener("input",drawHistory);
 async function sendChat(event){event.preventDefault();if(busy||!session)return;const input=$("#chat-input"),button=$("#chat-send"),text=input.value.trim();if(!text)return;if(text.length>4000){setApiStatus("#chat-status","Limite de 4000 caracteres por mensagem.",true);return;}busy=true;button.disabled=true;input.disabled=true;addChatMessage("user",text);input.value="";setApiStatus("#chat-status","A IA está pensando…");try{const result=await api("/api/app/chat",{method:"POST",body:JSON.stringify({content:text})});addChatMessage("assistant",result.message.content);setApiStatus("#chat-status","Mensagem salva no seu histórico.");await loadHistory();}catch(e){setApiStatus("#chat-status",e.message,true);addChatMessage("assistant","Não consegui concluir essa mensagem. "+e.message);}finally{busy=false;button.disabled=false;input.disabled=false;input.focus();}}
-function drawExpenses(expenses){const list=$("#expense-list");list.replaceChildren();const total=expenses.reduce((sum,e)=>sum+Number(e.amount),0);$("#expense-total").textContent=formatBRL(total);$("#expense-total").dataset.valorOriginal=formatBRL(total);$("#expense-count").textContent=String(expenses.length);$("#expense-count").dataset.valorOriginal=String(expenses.length);const categories={};for(const e of expenses)categories[e.category]=(categories[e.category]||0)+Number(e.amount);const top=Object.entries(categories).sort((a,b)=>b[1]-a[1])[0];$("#expense-category").textContent=top?top[0]:"—";const hero=$("#expense-total-hero");if(hero){hero.textContent=formatBRL(total);hero.dataset.valorOriginal=formatBRL(total);if(esconderValoresFinanceiros)hero.textContent="R$ ••••••";}if(esconderValoresFinanceiros){$("#expense-total").textContent="R$ ••••••";$("#expense-count").textContent="••";}if(!expenses.length){list.appendChild(node("p","muted","Nenhuma despesa registrada ainda."));return;}for(const e of expenses.slice(0,50)){const row=node("div","expense-row"),info=node("div","expense-info"),title=node("strong","",e.description),meta=node("small","",e.category+" · "+new Date(e.spent_at+"T12:00:00").toLocaleDateString("pt-BR")),amount=node("strong","expense-amount",formatBRL(e.amount)),remove=node("button","expense-remove","Excluir");info.append(title,meta);remove.type="button";remove.addEventListener("click",async()=>{if(!confirm("Excluir esta despesa?"))return;remove.disabled=true;try{await api("/api/app/expenses/"+encodeURIComponent(e.id),{method:"DELETE"});await loadExpenses();setApiStatus("#expense-status","Despesa excluída.");}catch(err){setApiStatus("#expense-status",err.message,true);remove.disabled=false;}});row.append(info,amount,remove);list.appendChild(row);}}
+let allExpenses=[];
+let filteredExpenses=[];
+function getFilteredExpenses(expenses){
+  const period=$("#expense-period")?.value||"month";
+  const query=($("#expense-search")?.value||"").trim().toLocaleLowerCase("pt-BR");
+  const now=new Date();
+  let startDate=new Date(now.getFullYear(),now.getMonth(),1);
+  if(period==="30")startDate=new Date(now.getTime()-30*86400000);
+  if(period==="90")startDate=new Date(now.getTime()-90*86400000);
+  if(period==="year")startDate=new Date(now.getFullYear(),0,1);
+  const localDate=d=>{const date=new Date(d);return date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+String(date.getDate()).padStart(2,"0");};
+  return expenses.filter(e=>{
+    const d=String(e.spent_at||"").slice(0,10);
+    if(period!=="all"&&d<localDate(startDate))return false;
+    return !query||(String(e.description||"")+" "+String(e.category||"")).toLocaleLowerCase("pt-BR").includes(query);
+  }).sort((a,b)=>String(b.spent_at).localeCompare(String(a.spent_at))||String(b.created_at).localeCompare(String(a.created_at)));
+}
+function drawCategoryChart(expenses){
+  const chart=$("#expense-category-chart");if(!chart)return;chart.replaceChildren();
+  const sums={};for(const e of expenses)sums[e.category]=(sums[e.category]||0)+Number(e.amount);
+  const entries=Object.entries(sums).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  if(!entries.length){chart.appendChild(node("p","muted","Ainda não há despesas neste período para montar o gráfico."));return;}
+  const max=Math.max(...entries.map(x=>x[1]),1);
+  for(const [name,value] of entries){const row=node("div","category-chart-row"),label=node("div","category-chart-label"),barTrack=node("div","category-chart-track"),bar=node("span","category-chart-bar"),amount=node("strong","category-chart-amount",esconderValoresFinanceiros?"R$ ••••••":formatBRL(value));label.append(node("span","",name),amount);bar.style.width=Math.max(3,value/max*100)+"%";barTrack.appendChild(bar);row.append(label,barTrack);chart.appendChild(row);}
+}
+function drawExpenses(expenses){
+  allExpenses=expenses;
+  filteredExpenses=getFilteredExpenses(allExpenses);
+  const list=$("#expense-list");if(!list)return;list.replaceChildren();
+  const total=filteredExpenses.reduce((sum,e)=>sum+Number(e.amount),0);
+  const totalText=formatBRL(total);
+  $("#expense-total").textContent=esconderValoresFinanceiros?"R$ ••••••":totalText;$("#expense-total").dataset.valorOriginal=totalText;
+  $("#expense-count").textContent=esconderValoresFinanceiros?"••":String(filteredExpenses.length);$("#expense-count").dataset.valorOriginal=String(filteredExpenses.length);
+  const categories={};for(const e of filteredExpenses)categories[e.category]=(categories[e.category]||0)+Number(e.amount);
+  const top=Object.entries(categories).sort((a,b)=>b[1]-a[1])[0];$("#expense-category").textContent=top?top[0]:"—";
+  const hero=$("#expense-total-hero");if(hero){hero.textContent=esconderValoresFinanceiros?"R$ ••••••":totalText;hero.dataset.valorOriginal=totalText;}
+  drawCategoryChart(filteredExpenses);
+  if(!filteredExpenses.length){list.appendChild(node("p","muted",allExpenses.length?"Nenhum lançamento corresponde aos filtros.":"Nenhuma despesa registrada ainda."));return;}
+  for(const e of filteredExpenses.slice(0,100)){
+    const row=node("div","expense-row"),info=node("div","expense-info"),title=node("strong","",e.description),meta=node("small","",e.category+" · "+new Date(e.spent_at+"T12:00:00").toLocaleDateString("pt-BR")),amount=node("strong","expense-amount",esconderValoresFinanceiros?"R$ ••••••":formatBRL(e.amount)),remove=node("button","expense-remove","Excluir");
+    amount.dataset.valorOriginal=formatBRL(e.amount);info.append(title,meta);remove.type="button";
+    remove.addEventListener("click",async()=>{if(!confirm("Excluir esta despesa?"))return;remove.disabled=true;try{await api("/api/app/expenses/"+encodeURIComponent(e.id),{method:"DELETE"});await loadExpenses();setApiStatus("#expense-status","Despesa excluída.");}catch(err){setApiStatus("#expense-status",err.message,true);remove.disabled=false;}});
+    row.append(info,amount,remove);list.appendChild(row);
+  }
+}
 async function loadExpenses(){const data=await api("/api/app/expenses");drawExpenses(data.expenses);}
-async function addExpense(event){event.preventDefault();if(!session)return;const description=$("#expense-description").value.trim(),amount=Number($("#expense-amount").value);const button=$("#expense-submit");button.disabled=true;setApiStatus("#expense-status","Salvando…");try{await api("/api/app/expenses",{method:"POST",body:JSON.stringify({description,amount,category:$("#expense-category-input")?.value||"Outros"})});$("#expense-form").reset();await loadExpenses();setApiStatus("#expense-status","Despesa salva com segurança.");}catch(e){setApiStatus("#expense-status",e.message,true);}finally{button.disabled=false;}}
-function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable","#sticker-file","#sticker-submit","#audio-file","#audio-submit","#audio-search-query","#audio-search-submit"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";}
+async function addExpense(event){event.preventDefault();if(!session)return;const description=$("#expense-description").value.trim(),amount=Number($("#expense-amount").value);const button=$("#expense-submit");button.disabled=true;setApiStatus("#expense-status","Salvando…");try{await api("/api/app/expenses",{method:"POST",body:JSON.stringify({description,amount,spent_at:$("#expense-date")?.value||new Date().toISOString().slice(0,10),category:$("#expense-category-input")?.value||"Outros"})});$("#expense-form").reset();if($("#expense-date"))$("#expense-date").value=localDateHoje();await loadExpenses();setApiStatus("#expense-status","Despesa salva com segurança.");}catch(e){setApiStatus("#expense-status",e.message,true);}finally{button.disabled=false;}}
+function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const expenseDate=$("#expense-date");if(expenseDate)expenseDate.disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable","#sticker-file","#sticker-submit","#audio-file","#audio-submit","#audio-search-query","#audio-search-submit"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";}
 async function loadProfile(){const data=await api("/api/app/me");const p=data.profile||{};$("#profile-name").value=p.display_name||"";$("#profile-assistant").value=p.assistant_name||"Nuvem";$("#profile-language").value=p.language||"pt-BR";$("#profile-style").value=p.response_style||"balanced";["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>$(s).disabled=false);setApiStatus("#profile-status","Preferências carregadas.");}
 async function saveProfile(event){event.preventDefault();if(!session)return;const button=$("#profile-save");button.disabled=true;setApiStatus("#profile-status","Salvando preferências…");try{await api("/api/app/me",{method:"PUT",body:JSON.stringify({display_name:$("#profile-name").value,assistant_name:$("#profile-assistant").value,language:$("#profile-language").value,response_style:$("#profile-style").value})});setApiStatus("#profile-status","Preferências salvas.");}catch(e){setApiStatus("#profile-status",e.message,true);}finally{button.disabled=false;}}
 $("#profile-form").addEventListener("submit",saveProfile);
@@ -149,3 +193,16 @@ $("#audio-search-form")?.addEventListener("submit", async event => {
     button.disabled = !session;
   }
 });
+
+function localDateHoje(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+$("#expense-period")?.addEventListener("change",()=>drawExpenses(allExpenses));
+$("#expense-search")?.addEventListener("input",()=>drawExpenses(allExpenses));
+$("#expense-export")?.addEventListener("click",()=>{
+  if(!session)return setApiStatus("#expense-status","Entre para exportar seus dados.",true);
+  if(!filteredExpenses.length)return setApiStatus("#expense-status","Não há lançamentos para exportar neste filtro.",true);
+  const quote=value=>'"'+String(value??"").replace(/"/g,'""')+'"';
+  const csv=["Data,Descrição,Categoria,Valor (BRL)",...filteredExpenses.map(e=>[e.spent_at,e.description,e.category,Number(e.amount).toFixed(2)].map(quote).join(","))].join("\r\n");
+  const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
+  const link=node("a","","Exportar CSV");link.href=url;link.download="nuvem-financas.csv";link.click();window.setTimeout(()=>URL.revokeObjectURL(url),30000);
+});
+if($("#expense-date"))$("#expense-date").value=localDateHoje();
