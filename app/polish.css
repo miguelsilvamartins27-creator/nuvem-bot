@@ -650,3 +650,42 @@ html[data-theme="dark"] .category-chart-track{background:#30342d!important}
 html[data-theme="dark"] .category-chart-bar{background:linear-gradient(90deg,#b6a0d3,#8c76ad)!important}
 @media(max-width:760px){.finance-intro{align-items:flex-start}.finance-date{font-size:9px}.bank-hero{min-height:170px;gap:18px;border-radius:19px!important}.finance-section-title{margin-top:20px}.finance-tools-row{grid-template-columns:minmax(0,1fr)!important}.finance-content-grid{grid-template-columns:minmax(0,1fr)!important}.expense-row{grid-template-columns:minmax(0,1fr) auto!important}.expense-row .expense-remove{grid-column:1/-1;justify-self:start}.finance-disclaimer{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.category-chart-bar,.typing-robot,.typing-dot{animation:none!important;transition:none!important}}
+
+
+/* Iconography and type scale: real vector icons, no emoji placeholders. */
+.app-shell .nuvem-robot-svg{display:block;flex:none;width:1em;height:1em;overflow:visible}
+.app-shell .ai-robot-large{width:56px;height:56px}
+.app-shell .ai-robot-medium{width:34px;height:34px}
+.app-shell .ai-robot-small{width:25px;height:25px}
+.app-shell .nuvem-folder-svg{display:inline-block;width:21px;height:21px;flex:0 0 21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.app-shell .exercise-folder-icon{display:grid;place-items:center}
+.app-shell .exercise-folder-icon .nuvem-folder-svg{width:28px;height:28px;color:var(--n-accent)}
+.app-shell .exercise-folder-mark{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:var(--n-soft);color:var(--n-accent)}
+.app-shell .exercise-folder-mark .nuvem-folder-svg{width:25px;height:25px}
+.app-shell .ai-hero-robot{display:grid;place-items:center;background:radial-gradient(circle at 32% 25%,#d8e3d3,#c9d4c6 48%,#a8b9a8 100%)!important;border:1px solid #bdcbb9!important;box-shadow:inset -9px -10px 22px #60786020,0 10px 24px #667e6618!important;color:#59725d!important}
+.app-shell .ai-profile-orb{display:grid;place-items:center;background:linear-gradient(145deg,#dce5d8,#c9d8c7)!important;border:1px solid #bdcbb9!important;color:#58745c!important;box-shadow:none!important}
+.app-shell .assistant-avatar{display:grid;place-items:center;background:var(--n-soft)!important;color:var(--n-accent)!important;border:1px solid var(--n-line)!important;box-shadow:none!important}
+.app-shell .ai-suggestion-icon{display:inline-grid;place-items:center;flex:0 0 23px;width:23px;height:23px;border-radius:7px;background:var(--n-soft);color:var(--n-accent)}
+.app-shell .ai-suggestion-icon svg,.app-shell .ai-capability-list svg{display:block;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.app-shell .ai-capability-list span{display:flex;align-items:center;gap:8px}
+.app-shell .typing-robot .nuvem-robot-svg{width:19px;height:19px}
+.app-shell .assistant-robot .nuvem-robot-svg{width:17px;height:17px}
+.view h1{font-size:clamp(28px,2.6vw,40px)!important;line-height:1.12!important;letter-spacing:-.035em!important}
+.view h2{font-size:clamp(21px,1.8vw,29px)!important;line-height:1.2!important;letter-spacing:-.025em!important}
+.view h3{font-size:clamp(17px,1.35vw,21px)!important;line-height:1.25!important}
+.view label{font-size:13px!important;line-height:1.45!important}
+.view .eyebrow{font-size:10px!important;line-height:1.45!important;letter-spacing:.09em!important}
+.view :is(.muted,.muted-text,.form-footnote,.setting-row small,.stat-card small){font-size:12px!important;line-height:1.55!important}
+@media(max-width:760px){
+ .view h1{font-size:clamp(26px,7vw,34px)!important}
+ .view h2{font-size:clamp(20px,5vw,25px)!important}
+ .view h3{font-size:17px!important}
+ .view label{font-size:13px!important}
+ .view .eyebrow{font-size:10px!important}
+ .view :is(.muted,.muted-text,.form-footnote,.setting-row small,.stat-card small){font-size:12px!important}
+ .app-shell .ai-robot-large{width:38px;height:38px}
+ .app-shell .ai-robot-medium{width:28px;height:28px}
+ .app-shell .ai-robot-small{width:23px;height:23px}
+}
+html[data-theme="dark"] .app-shell .ai-hero-robot{background:radial-gradient(circle at 32% 25%,#3d4c3c,#2b352a 70%,#242c23)!important;border-color:#4a5a47!important;color:#b9d0b4!important;box-shadow:none!important}
+html[data-theme="dark"] .app-shell .ai-profile-orb{background:linear-gradient(145deg,#364434,#293427)!important;border-color:#4a5a47!important;color:#b9d0b4!important}
