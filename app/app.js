@@ -128,7 +128,9 @@ async function enviarArquivoParaDownload(path, file, statusSelector, button, fal
     link.href = url;
     link.download = name;
     link.className = "button button-primary media-download-link";
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     setApiStatus(statusSelector, "Pronto! O download foi iniciado.");
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   } catch (error) {
