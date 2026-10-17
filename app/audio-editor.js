@@ -26,35 +26,62 @@ $("#export-choice-save").addEventListener("click",async()=>{const dialog=$("#exp
 $("#export-choice-whatsapp").addEventListener("click",()=>{const dialog=$("#export-choice-dialog");if(dialog&&dialog.open)dialog.close();$("#send-whatsapp").click();});
 $("#export-choice-cancel").addEventListener("click",()=>$("#export-choice-dialog").close());
 $("#send-whatsapp").addEventListener("click",async()=>{if(!outputBlob)return status("Exporte o trecho primeiro.",true);const button=$("#send-whatsapp");button.disabled=true;status("Enviando para o WhatsApp conectado…");try{const response=await fetch("/api/app/media/audio/send",{method:"POST",headers:authHeaders("audio/mpeg"),body:outputBlob,cache:"no-store"});let body={};try{body=await response.json()}catch{}if(!response.ok)throw new Error(body.error||"Não foi possível enviar.");status(body.message||"Áudio enviado ao WhatsApp conectado.");}catch(error){status(error.message||"Falha no envio.",true)}finally{button.disabled=!outputBlob||!session;}});
-async function init(){try{const response=await fetch("/api/app/config",{cache:"no-store"}),config=await response.json();if(!response.ok)throw new Error(config.error||"Servidor não configurado.");if(!window.supabase?.createClient)throw new Error("A autenticação não carregou. Recarregue a página.");supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});session=(await supabaseClient.auth.getSession()).data.session;$("#auth-state").textContent=session?"Conta autenticada":"Entre na Nuvem para exportar e enviar";$("#export-button").disabled=!session;supabaseClient.auth.onAuthStateChange((_event,next)=>{session=next;$("#auth-state").textContent=session?"Conta autenticada":"Sessão desconectada";$("#export-button").disabled=!sourceFile||!session;$("#send-whatsapp").disabled=!outputBlob||!session;});}catch(error){$("#auth-state").textContent="Sessão não verificada";status(error.message||"Falha ao iniciar o editor.",true);}
-const params=new URLSearchParams(location.search),title=params.get("title")||"",source=params.get("source");if(title){$("#player-title").textContent=title;$("#track-title").textContent=title;}if(source){status("Link recebido. Preparando o áudio para a linha do tempo…");
+async function init(){
   try{
-    const url=new URL(source);
-    const host=url.hostname.toLowerCase().replace(/^www\./,"");
-    const openHosts=["upload.wikimedia.org","archive.org"];
-    const direct=/\.(mp3|wav|ogg|oga|flac|m4a|aac|opus|aiff)$/i.test(url.pathname);
-    const openDirect=url.protocol==="https:"&&openHosts.includes(host)&&direct;
-    const genericPublic=url.protocol==="https:"&&!url.username&&!url.password&&host!=="localhost"&&!host.endsWith(".localhost")&&!host.endsWith(".local");
-    $("#source-link").href=url.href;
-    $("#source-link").hidden=true;
-    if(!session?.access_token && supabaseClient){try{session=(await supabaseClient.auth.getSession()).data.session;}catch{}}
-    if(!session?.access_token){status("O link chegou ao editor, mas sua sessão não foi reconhecida nesta aba. Volte à Nuvem, confirme que está conectado e tente novamente.",true);}
-    else if(openDirect||genericPublic){
-      status("Importando áudio para a linha do tempo…");
-      try{
-        const endpoint=openDirect?"/api/app/media/audio/download":"/api/app/media/audio/import";
-        const response=await fetch(endpoint,{method:"POST",headers:authHeaders("application/json"),body:JSON.stringify({url:url.href}),cache:"no-store"});
-        if(!response.ok){let body={};try{body=await response.json()}catch{}throw new Error(body.error||"Não foi possível importar esse áudio.");}
-        const blob=await response.blob();
-        if(!blob.size||blob.size>12*1024*1024)throw new Error("O arquivo precisa ter até 12 MB para abrir no editor.");
-        const base=(title||"audio-importado").replace(/\.[a-z0-9]{1,5}$/i,"").replace(/[^a-z0-9._ -]/gi,"").trim().slice(0,80)||"audio-importado";
-        const loaded=setFile(new File([blob],base+".mp3",{type:"audio/mpeg"}));
-        if(!loaded)throw new Error("O áudio foi recebido, mas não pôde ser aberto. Tente outro resultado.");
-        status("✓ Áudio carregado na linha do tempo. Selecione o trecho que deseja manter.");
-      }catch(error){status(error.message||"Não consegui importar esse áudio. Tente outro resultado.",true);}
-    }else{
-      status("Este link não pôde ser importado. Ele pode ser privado, protegido ou incompatível; tente um link HTTPS público ou selecione um arquivo local.",true);
-    }
-  }catch{status("Link de origem inválido. Escolha um arquivo local para editar.",true);}
-}else{status("Nenhum link de áudio foi recebido. Volte aos resultados da pesquisa e clique em Editar e baixar novamente.",true);}
+    const response=await fetch("/api/app/config",{cache:"no-store"});
+    const config=await response.json();
+    if(!response.ok)throw new Error(config.error||"Servidor não configurado.");
+    if(!window.supabase?.createClient)throw new Error("A autenticação não carregou. Recarregue a página.");
+    supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    session=(await supabaseClient.auth.getSession()).data.session;
+    $("#auth-state").textContent=session?"Conta autenticada":"Entre na Nuvem para exportar e enviar";
+    $("#export-button").disabled=!sourceFile||!session;
+    $("#send-whatsapp").disabled=!outputBlob||!session;
+    supabaseClient.auth.onAuthStateChange((_event,next)=>{
+      session=next;
+      $("#auth-state").textContent=session?"Conta autenticada":"Sessão desconectada";
+      $("#export-button").disabled=!sourceFile||!session;
+      $("#send-whatsapp").disabled=!outputBlob||!session;
+    });
+  }catch(error){
+    $("#auth-state").textContent="Sessão não verificada";
+    status(error.message||"Falha ao iniciar o editor.",true);
+  }
+  const params=new URLSearchParams(location.search),title=params.get("title")||"",source=params.get("source");
+  if(title){$("#player-title").textContent=title;$("#track-title").textContent=title;}
+  if(source){
+    status("Link recebido. Preparando o áudio para a linha do tempo…");
+    try{
+      const url=new URL(source);
+      const host=url.hostname.toLowerCase().replace(/^www\./,"");
+      const openHosts=["upload.wikimedia.org","archive.org"];
+      const direct=/\.(mp3|wav|ogg|oga|flac|m4a|aac|opus|aiff)$/i.test(url.pathname);
+      const openDirect=url.protocol==="https:"&&openHosts.includes(host)&&direct;
+      const genericPublic=url.protocol==="https:"&&!url.username&&!url.password&&host!=="localhost"&&!host.endsWith(".localhost")&&!host.endsWith(".local");
+      $("#source-link").href=url.href;
+      $("#source-link").hidden=true;
+      if(!session?.access_token&&supabaseClient){try{session=(await supabaseClient.auth.getSession()).data.session;}catch{}}
+      if(!session?.access_token){
+        status("O link chegou ao editor, mas sua sessão não foi reconhecida nesta aba. Volte à Nuvem, confirme que está conectado e tente novamente.",true);
+      }else if(openDirect||genericPublic){
+        status("Importando áudio para a linha do tempo…");
+        try{
+          const endpoint=openDirect?"/api/app/media/audio/download":"/api/app/media/audio/import";
+          const response=await fetch(endpoint,{method:"POST",headers:authHeaders("application/json"),body:JSON.stringify({url:url.href}),cache:"no-store"});
+          if(!response.ok){let body={};try{body=await response.json();}catch{}throw new Error(body.error||"Não foi possível importar esse áudio.");}
+          const blob=await response.blob();
+          if(!blob.size||blob.size>12*1024*1024)throw new Error("O arquivo precisa ter até 12 MB para abrir no editor.");
+          const base=(title||"audio-importado").replace(/\.[a-z0-9]{1,5}$/i,"").replace(/[^a-z0-9._ -]/gi,"").trim().slice(0,80)||"audio-importado";
+          const loaded=setFile(new File([blob],base+".mp3",{type:"audio/mpeg"}));
+          if(!loaded)throw new Error("O áudio foi recebido, mas não pôde ser aberto. Tente outro resultado.");
+          status("✓ Áudio carregado na linha do tempo. Selecione o trecho que deseja manter.");
+        }catch(error){status(error.message||"Não consegui importar esse áudio. Tente outro resultado.",true);}
+      }else{
+        status("Este link não pôde ser importado. Ele pode ser privado, protegido ou incompatível; tente um link HTTPS público ou selecione um arquivo local.",true);
+      }
+    }catch{status("Link de origem inválido. Escolha um arquivo local para editar.",true);}
+  }else{
+    status("Nenhum link de áudio foi recebido. Volte aos resultados da pesquisa e clique em Editar e baixar novamente.",true);
+  }
+}
 init();
