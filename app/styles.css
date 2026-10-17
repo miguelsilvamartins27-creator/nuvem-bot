@@ -390,3 +390,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .fit-subview .wellness-note{margin-top:20px}
 @media(max-width:1000px){.exercise-folder-list{grid-template-columns:1fr}.fit-builder-columns{grid-template-columns:1fr}}
 @media(max-width:760px){.fit-workspace-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:6px}.fit-tab{padding:11px 8px;font-size:11px;text-align:center}.fit-page-heading{align-items:flex-start;flex-direction:column;gap:10px}.fit-folder-heading{flex-direction:row;align-items:center}.exercise-folder-form{grid-template-columns:1fr}.exercise-folder-form .form-footnote{grid-column:auto}.exercise-folder-actions{justify-content:space-between}.exercise-folder-actions .button{flex:1}.exercise-saved-card{grid-template-columns:60px minmax(0,1fr);gap:10px}.exercise-saved-media{width:60px;height:60px}.exercise-saved-actions .button{font-size:9px;padding:7px 8px}.fit-count-pill{font-size:10px;padding:8px 10px}}
+
+
+/* Navigation hierarchy and single-purpose pages */
+.sidebar{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#353a43 transparent}
+.nav-group{display:grid;gap:3px}
+.nav-group .side-label{padding:8px 12px 3px;font-size:9px;letter-spacing:1.5px;color:#818b9c}
+.nav-group .nav-item{padding-top:10px;padding-bottom:10px;font-size:12px}
+.sidebar .brand{padding-bottom:18px;flex-shrink:0}
+.sidebar-bottom{padding-top:12px;margin-top:auto;flex-shrink:0}
+#view-inicio .feature-grid{margin-bottom:8px}
+#view-inicio .welcome-row{min-height:210px}
+#view-dieta .fit-page-heading{margin-bottom:20px}
+#view-dieta .wellness-panel{max-width:940px}
+#view-dieta .wellness-note{margin-top:16px}
+#view-fit .fit-subview,#view-dieta .fit-subview{min-width:0}
+@media(max-width:900px) and (min-width:761px){.sidebar .nav-group .nav-item{font-size:11px;padding-left:9px;gap:8px}.nav-group .side-label{font-size:8px}}
+@media(max-width:760px){#view-inicio .welcome-row{min-height:170px}.nav-group .side-label{display:none}}
