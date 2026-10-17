@@ -39,8 +39,23 @@ describe('Nuvem Fit organization and navigation', () => {
 
   it('refreshes cached assets after the navigation redesign', async () => {
     const sw = await fs.readFile(swUrl, 'utf8');
-    assert.ok(sw.includes('nuvem-shell-v31'));
+    assert.ok(sw.includes('nuvem-shell-v32'));
     assert.ok(sw.includes('styles.css?v=27'));
-    assert.ok(sw.includes('app.js?v=30'));
+    assert.ok(sw.includes('app.js?v=31'));
   });
+
+  it('provides a consistent palette and readable, accessible AI conversation states', async () => {
+    const html = await fs.readFile(htmlUrl, 'utf8');
+    const js = await fs.readFile(jsUrl, 'utf8');
+    const css = await fs.readFile(new URL('../app/polish.css', import.meta.url), 'utf8');
+    assert.ok(html.includes('polish.css?v=2'));
+    assert.ok(html.includes('app.js?v=31'));
+    assert.ok(js.includes('function renderAssistantContent'));
+    assert.ok(js.includes('function addTypingIndicator'));
+    assert.ok(js.includes('message-copy'));
+    assert.ok(css.includes('--nuvem-accent:#8bc8c0'));
+    assert.ok(css.includes('#view-ia .chat-messages'));
+    assert.ok(css.includes('prefers-reduced-motion:reduce'));
+  });
+
 });
