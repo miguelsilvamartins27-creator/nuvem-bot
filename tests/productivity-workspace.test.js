@@ -38,11 +38,11 @@ describe("Nuvem productivity workspace", () => {
     const html = await read("../app/index.html");
     const sw = await read("../app/sw.js");
     assert.ok(html.includes("productivity.css?v=2"));
-    assert.ok(html.includes("polish.css?v=3"));
+    assert.ok(html.includes("polish.css?v=4"));
     assert.ok(html.includes("productivity.js?v=2"));
-    assert.ok(sw.includes("nuvem-shell-v33"));
+    assert.ok(sw.includes("nuvem-shell-v34"));
     assert.ok(sw.includes("/app/productivity.css?v=2"));
     assert.ok(sw.includes("/app/productivity.js?v=2"));
-    assert.ok(sw.includes("/app/polish.css?v=3"));
+    assert.ok(sw.includes("/app/polish.css?v=4"));
   });
 });
