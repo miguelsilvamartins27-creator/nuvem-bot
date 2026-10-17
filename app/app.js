@@ -46,11 +46,19 @@ function saveExerciseFolders(){
   catch{setApiStatus("#exercise-folder-status","Não foi possível salvar. Verifique o espaço disponível no navegador.",true);return false;}
 }
 function switchFitSubpage(name){
-  document.querySelectorAll(".fit-subview").forEach(el=>el.classList.toggle("active",el.id==="fit-subview-"+name));
+  document.querySelectorAll("#view-fit .fit-subview").forEach(el=>el.classList.toggle("active",el.id==="fit-subview-"+name));
   document.querySelectorAll("[data-fit-tab]").forEach(el=>el.classList.toggle("active",el.dataset.fitTab===(name==="folder-detail"?"folders":name)));
   const area=$("#view-fit");if(area)area.scrollIntoView({behavior:"smooth",block:"start"});
 }
 document.querySelectorAll("[data-fit-tab]").forEach(button=>button.addEventListener("click",()=>switchFitSubpage(button.dataset.fitTab)));
+
+function switchDietSubpage(name){
+  document.querySelectorAll("#view-dieta .fit-subview").forEach(el=>el.classList.toggle("active",el.id==="diet-subview-"+name));
+  document.querySelectorAll("[data-diet-tab]").forEach(el=>el.classList.toggle("active",el.dataset.dietTab===name));
+  $("#view-dieta")?.scrollIntoView({behavior:"smooth",block:"start"});
+}
+document.querySelectorAll("[data-diet-tab]").forEach(button=>button.addEventListener("click",()=>switchDietSubpage(button.dataset.dietTab)));
+
 function renderExerciseFolders(){
   const area=$("#exercise-folder-list");if(!area)return;area.replaceChildren();
   if(!exerciseFolders.length){const empty=node("div","exercise-library-empty");empty.append(node("span","","📁"),node("strong","","Suas pastas começam aqui"),node("small","","Crie sua primeira pasta e depois adicione os exercícios que quiser."));area.appendChild(empty);return;}
