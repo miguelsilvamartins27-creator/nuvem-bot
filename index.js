@@ -132,10 +132,12 @@ montarAppPessoal(app, {
     getSupabase: () => supabase,
     getAiRouter: () => roteadorIA,
     sendWhatsAppSticker: async buffer => {
-        if (!botConectado || !socketAtual) {
-            throw new Error('WhatsApp desconectado');
-        }
+        if (!botConectado || !socketAtual) throw new Error('WhatsApp desconectado');
         await socketAtual.sendMessage(MEU_CHAT, { sticker: buffer });
+    },
+    sendWhatsAppAudio: async buffer => {
+        if (!botConectado || !socketAtual) throw new Error('WhatsApp desconectado');
+        await socketAtual.sendMessage(MEU_CHAT, { audio: buffer, mimetype: 'audio/mpeg', ptt: false });
     },
     env: process.env
 });
