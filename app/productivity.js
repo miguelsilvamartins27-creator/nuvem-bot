@@ -307,7 +307,56 @@
   $p("#note-cancel-edit")?.addEventListener("click", () => { resetNoteForm(); status("#note-status", "Edição cancelada."); });
   $p("#note-search")?.addEventListener("input", renderNotes);
 
+
+  function localDateToday() {
+    const date = new Date();
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+  }
+  async function loadDashboardOverview() {
+    if (!session?.access_token) return;
+    try {
+      const [taskData, noteData] = await Promise.all([api("/api/app/tasks"), api("/api/app/notes")]);
+      const allTasks = Array.isArray(taskData.tasks) ? taskData.tasks : [];
+      const allNotes = Array.isArray(noteData.notes) ? noteData.notes : [];
+      const pending = allTasks.filter(task => task.status !== "completed");
+      const dueToday = pending.filter(task => task.due_date === localDateToday());
+      if ($p("#dashboard-task-count")) $p("#dashboard-task-count").textContent = String(pending.length);
+      if ($p("#dashboard-due-count")) $p("#dashboard-due-count").textContent = String(dueToday.length);
+      if ($p("#dashboard-note-count")) $p("#dashboard-note-count").textContent = String(allNotes.length);
+      if ($p("#quick-task-status")) {
+        $p("#quick-task-status").textContent = "✓ Resumo atualizado agora.";
+        $p("#quick-task-status").classList.remove("error-text");
+      }
+    } catch {
+      if ($p("#quick-task-status")) {
+        $p("#quick-task-status").textContent = "Não foi possível atualizar o resumo. Abra a área de organização para tentar novamente.";
+        $p("#quick-task-status").classList.add("error-text");
+      }
+    }
+  }
+  $p("#quick-task-form")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!session?.access_token) return status("#quick-task-status", "Entre na conta para salvar uma tarefa.", true);
+    const input = $p("#quick-task-title");
+    const title = input.value.trim();
+    if (!title) return status("#quick-task-status", "Digite o que você precisa fazer.", true);
+    const button = $p("#quick-task-submit");
+    button.disabled = true;
+    status("#quick-task-status", "Salvando tarefa…");
+    try {
+      await api("/api/app/tasks", { method: "POST", body: JSON.stringify({ title, description: "", priority: "medium", due_date: null }) });
+      input.value = "";
+      await loadDashboardOverview();
+      tasksLoaded = false;
+      if (document.querySelector("#view-organizacao.active") && (document.querySelector("[data-productivity-tab].active")?.dataset.productivityTab || "tasks") === "tasks") await loadTasks(true);
+      status("#quick-task-status", "✓ Tarefa adicionada à sua lista.");
+    } catch (error) { status("#quick-task-status", error.message || "Não foi possível criar a tarefa.", true); }
+    finally { button.disabled = false; }
+  });
+  document.querySelectorAll("[data-open-productivity-tab]").forEach(button => button.addEventListener("click", () => setTab(button.dataset.openProductivityTab)));
+
   window.addEventListener("nuvem:viewchange", event => {
+    if (event.detail?.view === "inicio") { loadDashboardOverview(); return; }
     if (event.detail?.view !== "organizacao") return;
     if (!session?.access_token) {
       status("#task-status", "Entre na sua conta para acessar suas tarefas.", true);
@@ -321,6 +370,7 @@
   window.addEventListener("nuvem:authenticated", () => {
     tasksLoaded = false;
     notesLoaded = false;
+    loadDashboardOverview();
     if (document.querySelector("#view-organizacao.active")) setTab("tasks");
   });
 })();
