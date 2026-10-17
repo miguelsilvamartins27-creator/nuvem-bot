@@ -99,6 +99,8 @@ import {
     processarCandidatos
 } from './lib/viral/pipeline.js';
 
+import { pesquisarInternetArchive, pesquisarWikimediaCommons } from './lib/viral/fontes.js';
+
 // ======================================================
 // EXEC FILE
 // ======================================================
@@ -4592,37 +4594,60 @@ async function comandoViral(
                     );
             } catch (erroBusca) {
                 console.error(
-                    `❌ ${idOperacao}: falha na busca:`,
-                    erroBusca?.message ||
-                    erroBusca
+                    `❌ ${idOperacao}: falha na busca principal:`,
+                    erroBusca?.message || erroBusca
                 );
-
-                await sock.sendMessage(
-                    chatJid,
-                    {
-                        text:
-                            mensagemErroViral(
-                                erroBusca
-                            )
-                    }
-                );
-
-                return;
+                candidatos = [];
             }
 
-            if (
-                !candidatos.length
-            ) {
+            // Consulta dois catálogos independentes em paralelo: assim uma fonte
+            // lenta não soma seu timeout ao da outra. Ambos filtram por licença
+            // reconhecida antes de incluir o áudio como candidato.
+            const resultadosAlternativos = await Promise.allSettled([
+                pesquisarInternetArchive(entrada.valor, { limite: MAX_CANDIDATOS_TENTATIVA }),
+                pesquisarWikimediaCommons(entrada.valor, { limite: MAX_CANDIDATOS_TENTATIVA })
+            ]);
+            const candidatosAlternativos = [];
+            for (const [indiceFonte, resultadoFonte] of resultadosAlternativos.entries()) {
+                if (resultadoFonte.status === 'fulfilled') {
+                    candidatosAlternativos.push(...resultadoFonte.value);
+                } else {
+                    console.warn(
+                        `⚠️ ${idOperacao}: catálogo alternativo ${indiceFonte + 1} indisponível:`,
+                        resultadoFonte.reason?.message || resultadoFonte.reason
+                    );
+                }
+            }
+
+            // Reserva metade do orçamento para cada fonte: sem isso, os
+            // primeiros resultados do YouTube poderiam ocupar todas as tentativas.
+            candidatos = candidatos
+                .slice(0, MAX_CANDIDATOS_TENTATIVA)
+                .map(candidato => ({
+                    ...candidato,
+                    fonte: candidato.fonte || 'YouTube'
+                }));
+
+            if (candidatosAlternativos.length) {
+                if (!candidatos.length) {
+                    await sock.sendMessage(
+                        chatJid,
+                        { text: '🔁 Busca principal indisponível. Encontrei alternativas no catálogo de áudio aberto...' }
+                    );
+                }
+                candidatos.push(...candidatosAlternativos);
+            }
+
+            if (!candidatos.length) {
                 await sock.sendMessage(
                     chatJid,
                     {
                         text:
-                            '❌ *Nenhum resultado encontrado*\n\n' +
-                            'Não encontrei um candidato adequado para esse termo.\n\n' +
-                            '💡 Tente um termo mais específico (artista + nome da música).'
+                            '❌ *Não encontrei áudio disponível nas fontes consultadas.*\n\n' +
+                            'A busca pode não ter encontrado uma correspondência ou uma das fontes pode estar temporariamente indisponível.\n\n' +
+                            '💡 Tente artista + título, use outro termo ou envie um link direto de áudio autorizado.'
                     }
                 );
-
                 return;
             }
 
@@ -4651,7 +4676,7 @@ async function comandoViral(
 
                     maxCandidatos:
                         ehBusca
-                            ? MAX_CANDIDATOS_TENTATIVA
+                            ? Math.min(candidatos.length, MAX_CANDIDATOS_TENTATIVA * 2)
                             : 1,
 
                     deadline,
