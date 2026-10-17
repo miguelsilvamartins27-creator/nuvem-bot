@@ -21,6 +21,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import express from 'express';
+import { montarAppPessoal } from './lib/app-api.js';
 import { createClient } from '@supabase/supabase-js';
 
 import { execFile, spawn } from 'node:child_process';
@@ -122,6 +123,16 @@ ffmpeg.setFfmpegPath(
 
 const app =
     express();
+
+app.disable('x-powered-by');
+app.use(express.json({ limit: '32kb', type: 'application/json' }));
+app.get('/app', (req, res) => res.redirect(302, '/app/'));
+app.use('/app', express.static(path.resolve('app'), { index: 'index.html', dotfiles: 'deny', maxAge: '1h' }));
+montarAppPessoal(app, {
+    getSupabase: () => supabase,
+    getAiRouter: () => roteadorIA,
+    env: process.env
+});
 
 app.get(
     '/',
