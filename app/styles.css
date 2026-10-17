@@ -419,3 +419,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .audio-editor-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 .audio-editor-actions button{margin-left:auto}
 @media(max-width:600px){.audio-trim-fields{grid-template-columns:1fr}.audio-editor-actions{align-items:stretch;flex-direction:column}.audio-editor-actions button{margin-left:0}}
+
+/* Audio search results: visible artwork, playback and clear actions */
+.audio-result-card{display:grid!important;grid-template-columns:170px minmax(0,1fr);align-items:stretch!important;gap:0!important;padding:0!important;overflow:hidden;margin:12px 0;background:var(--panel-2,#151719)}
+.audio-result-media{min-height:150px;display:grid;place-items:center;overflow:hidden;background:#22252b;color:#b7ff3a;font-size:32px}
+.audio-result-media img{display:block;width:100%;height:100%;min-height:150px;max-height:230px;object-fit:cover}
+.audio-result-media-fallback{background:radial-gradient(circle at 25% 20%,#343b47,#17191f 70%);color:#b7ff3a}
+.audio-result-content{min-width:0;padding:14px;display:flex;flex-direction:column;gap:10px}
+.audio-result-content .media-result-details strong{font-size:14px;line-height:1.45}
+.audio-result-source{color:var(--accent,#b7ff3a)!important;font-weight:650}
+.audio-result-content .audio-result-embed{max-width:100%;margin:5px 0}
+.audio-result-content .media-audio-player{width:100%;margin:7px 0}
+.audio-result-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:auto;padding-top:5px}
+.audio-result-actions a{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:9px;border:1px solid var(--line);font-size:11px;font-weight:700;text-decoration:none}
+.audio-result-actions .media-result-link{background:var(--panel,#101114);color:var(--text,#fff)}
+.audio-result-actions .media-result-download{background:var(--accent,#b7ff3a);color:#171914;border-color:transparent}
+.audio-empty-state{padding:20px;border:1px dashed var(--line);border-radius:12px;color:var(--text-muted,#aaa);line-height:1.6}
+@media(max-width:650px){.audio-result-card{grid-template-columns:1fr}.audio-result-media{min-height:130px;max-height:200px}.audio-result-media img{max-height:200px;min-height:130px;object-fit:contain}.audio-result-content{padding:12px}.audio-result-content .audio-result-embed{width:100%}.audio-result-actions a{flex:1}}
