@@ -27,7 +27,7 @@ $("#export-choice-whatsapp").addEventListener("click",()=>{const dialog=$("#expo
 $("#export-choice-cancel").addEventListener("click",()=>$("#export-choice-dialog").close());
 $("#send-whatsapp").addEventListener("click",async()=>{if(!outputBlob)return status("Exporte o trecho primeiro.",true);const button=$("#send-whatsapp");button.disabled=true;status("Enviando para o WhatsApp conectado…");try{const response=await fetch("/api/app/media/audio/send",{method:"POST",headers:authHeaders("audio/mpeg"),body:outputBlob,cache:"no-store"});let body={};try{body=await response.json()}catch{}if(!response.ok)throw new Error(body.error||"Não foi possível enviar.");status(body.message||"Áudio enviado ao WhatsApp conectado.");}catch(error){status(error.message||"Falha no envio.",true)}finally{button.disabled=!outputBlob||!session;}});
 async function init(){try{const response=await fetch("/api/app/config",{cache:"no-store"}),config=await response.json();if(!response.ok)throw new Error(config.error||"Servidor não configurado.");if(!window.supabase?.createClient)throw new Error("A autenticação não carregou. Recarregue a página.");supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});session=(await supabaseClient.auth.getSession()).data.session;$("#auth-state").textContent=session?"Conta autenticada":"Entre na Nuvem para exportar e enviar";$("#export-button").disabled=!session;supabaseClient.auth.onAuthStateChange((_event,next)=>{session=next;$("#auth-state").textContent=session?"Conta autenticada":"Sessão desconectada";$("#export-button").disabled=!sourceFile||!session;$("#send-whatsapp").disabled=!outputBlob||!session;});}catch(error){$("#auth-state").textContent="Sessão não verificada";status(error.message||"Falha ao iniciar o editor.",true);}
-const params=new URLSearchParams(location.search),title=params.get("title")||"",source=params.get("source");if(title){$("#player-title").textContent=title;$("#track-title").textContent=title;}if(source){
+const params=new URLSearchParams(location.search),title=params.get("title")||"",source=params.get("source");if(title){$("#player-title").textContent=title;$("#track-title").textContent=title;}if(source){status("Link recebido. Preparando o áudio para a linha do tempo…");
   try{
     const url=new URL(source);
     const host=url.hostname.toLowerCase().replace(/^www\./,"");
@@ -38,7 +38,8 @@ const params=new URLSearchParams(location.search),title=params.get("title")||"",
     const platform=url.protocol==="https:"&&platformHosts.includes(host);
     $("#source-link").href=url.href;
     $("#source-link").hidden=true;
-    if(!session?.access_token){status("Entre na Nuvem na mesma aba para carregar o áudio automaticamente.",true);}
+    if(!session?.access_token && supabaseClient){try{session=(await supabaseClient.auth.getSession()).data.session;}catch{}}
+    if(!session?.access_token){status("O link chegou ao editor, mas sua sessão não foi reconhecida nesta aba. Volte à Nuvem, confirme que está conectado e tente novamente.",true);}
     else if(openDirect||platform){
       status("Importando áudio para a linha do tempo…");
       try{
@@ -55,5 +56,5 @@ const params=new URLSearchParams(location.search),title=params.get("title")||"",
       status("Esta fonte não permite importação automática. Escolha um arquivo compatível que você tenha direito de usar.",true);
     }
   }catch{status("Link de origem inválido. Escolha um arquivo local para editar.",true);}
-}
+}else{status("Nenhum link de áudio foi recebido. Volte aos resultados da pesquisa e clique em Editar e baixar novamente.",true);}
 init();
