@@ -32,18 +32,17 @@ const params=new URLSearchParams(location.search),title=params.get("title")||"",
     const url=new URL(source);
     const host=url.hostname.toLowerCase().replace(/^www\./,"");
     const openHosts=["upload.wikimedia.org","archive.org"];
-    const platformHosts=["youtube.com","m.youtube.com","music.youtube.com","youtu.be","soundcloud.com","m.soundcloud.com"];
     const direct=/\.(mp3|wav|ogg|oga|flac|m4a|aac|opus|aiff)$/i.test(url.pathname);
     const openDirect=url.protocol==="https:"&&openHosts.includes(host)&&direct;
-    const platform=url.protocol==="https:"&&platformHosts.includes(host);
+    const genericPublic=url.protocol==="https:"&&!url.username&&!url.password&&host!=="localhost"&&!host.endsWith(".localhost")&&!host.endsWith(".local");
     $("#source-link").href=url.href;
     $("#source-link").hidden=true;
     if(!session?.access_token && supabaseClient){try{session=(await supabaseClient.auth.getSession()).data.session;}catch{}}
     if(!session?.access_token){status("O link chegou ao editor, mas sua sessão não foi reconhecida nesta aba. Volte à Nuvem, confirme que está conectado e tente novamente.",true);}
-    else if(openDirect||platform){
+    else if(openDirect||genericPublic){
       status("Importando áudio para a linha do tempo…");
       try{
-        const endpoint=platform?"/api/app/media/audio/import":"/api/app/media/audio/download";
+        const endpoint=openDirect?"/api/app/media/audio/download":"/api/app/media/audio/import";
         const response=await fetch(endpoint,{method:"POST",headers:authHeaders("application/json"),body:JSON.stringify({url:url.href}),cache:"no-store"});
         if(!response.ok){let body={};try{body=await response.json()}catch{}throw new Error(body.error||"Não foi possível importar esse áudio.");}
         const blob=await response.blob();
@@ -54,7 +53,7 @@ const params=new URLSearchParams(location.search),title=params.get("title")||"",
         status("✓ Áudio carregado na linha do tempo. Selecione o trecho que deseja manter.");
       }catch(error){status(error.message||"Não consegui importar esse áudio. Tente outro resultado.",true);}
     }else{
-      status("Esta fonte não permite importação automática. Escolha um arquivo compatível que você tenha direito de usar.",true);
+      status("Este link não pôde ser importado. Ele pode ser privado, protegido ou incompatível; tente um link HTTPS público ou selecione um arquivo local.",true);
     }
   }catch{status("Link de origem inválido. Escolha um arquivo local para editar.",true);}
 }else{status("Nenhum link de áudio foi recebido. Volte aos resultados da pesquisa e clique em Editar e baixar novamente.",true);}
