@@ -29,6 +29,8 @@ describe('Nuvem Fit exercise library', () => {
     assert.ok(snippet.includes('limitWellness'));
     assert.ok(snippet.includes('oss.exercisedb.dev/api/v1/exercises'));
     assert.ok(snippet.includes("candidate.protocol === 'https:' && candidate.hostname === 'static.exercisedb.dev'"));
+    assert.ok(source.includes("app.get('/api/app/exercises/image'"));
+    assert.ok(source.includes("encodeURIComponent(candidate.href)"));
     assert.ok(snippet.includes("path.join(root, 'data', 'exercicios', 'aliases.json')"));
   });
 
@@ -46,8 +48,9 @@ describe('Nuvem Fit exercise library', () => {
 
   it('invalidates the old cached app shell', async () => {
     const sw = await fs.readFile(swUrl, 'utf8');
-    assert.ok(sw.includes('nuvem-shell-v35'));
+    assert.ok(sw.includes('nuvem-shell-v36'));
     assert.ok(sw.includes('styles.css?v=27'));
-    assert.ok(sw.includes('app.js?v=34'));
+    assert.ok(sw.includes('app.js?v=35'));
+    assert.ok((await fs.readFile(aliasesUrl, 'utf8')).includes('supino reto'));
   });
 });
