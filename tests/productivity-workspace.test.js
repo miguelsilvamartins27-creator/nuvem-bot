@@ -37,10 +37,10 @@ describe("Nuvem productivity workspace", () => {
   it("includes the new assets in the PWA shell and updates its cache version", async () => {
     const html = await read("../app/index.html");
     const sw = await read("../app/sw.js");
-    assert.ok(html.includes("productivity.css?v=1"));
-    assert.ok(html.includes("productivity.js?v=1"));
-    assert.ok(sw.includes("nuvem-shell-v26"));
-    assert.ok(sw.includes("/app/productivity.css?v=1"));
-    assert.ok(sw.includes("/app/productivity.js?v=1"));
+    assert.ok(html.includes("productivity.css?v=2"));
+    assert.ok(html.includes("productivity.js?v=2"));
+    assert.ok(sw.includes("nuvem-shell-v27"));
+    assert.ok(sw.includes("/app/productivity.css?v=2"));
+    assert.ok(sw.includes("/app/productivity.js?v=2"));
   });
 });
