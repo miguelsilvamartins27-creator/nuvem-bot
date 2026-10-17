@@ -27,5 +27,33 @@ $("#export-choice-whatsapp").addEventListener("click",()=>{const dialog=$("#expo
 $("#export-choice-cancel").addEventListener("click",()=>$("#export-choice-dialog").close());
 $("#send-whatsapp").addEventListener("click",async()=>{if(!outputBlob)return status("Exporte o trecho primeiro.",true);const button=$("#send-whatsapp");button.disabled=true;status("Enviando para o WhatsApp conectado…");try{const response=await fetch("/api/app/media/audio/send",{method:"POST",headers:authHeaders("audio/mpeg"),body:outputBlob,cache:"no-store"});let body={};try{body=await response.json()}catch{}if(!response.ok)throw new Error(body.error||"Não foi possível enviar.");status(body.message||"Áudio enviado ao WhatsApp conectado.");}catch(error){status(error.message||"Falha no envio.",true)}finally{button.disabled=!outputBlob||!session;}});
 async function init(){try{const response=await fetch("/api/app/config",{cache:"no-store"}),config=await response.json();if(!response.ok)throw new Error(config.error||"Servidor não configurado.");if(!window.supabase?.createClient)throw new Error("A autenticação não carregou. Recarregue a página.");supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});session=(await supabaseClient.auth.getSession()).data.session;$("#auth-state").textContent=session?"Conta autenticada":"Entre na Nuvem para exportar e enviar";$("#export-button").disabled=!session;supabaseClient.auth.onAuthStateChange((_event,next)=>{session=next;$("#auth-state").textContent=session?"Conta autenticada":"Sessão desconectada";$("#export-button").disabled=!sourceFile||!session;$("#send-whatsapp").disabled=!outputBlob||!session;});}catch(error){$("#auth-state").textContent="Sessão não verificada";status(error.message||"Falha ao iniciar o editor.",true);}
-const params=new URLSearchParams(location.search),title=params.get("title")||"",source=params.get("source");if(title){$("#player-title").textContent=title;$("#track-title").textContent=title;}if(source){try{const url=new URL(source),allowed=url.protocol==="https:"&&(url.hostname==="upload.wikimedia.org"||url.hostname==="archive.org"),direct=/\.(mp3|wav|ogg|oga|flac|m4a|aac|opus|aiff|mp4|webm|mov|mkv)$/i.test(url.pathname);$("#source-link").href=url.href;$("#source-link").hidden=false;if(allowed&&direct){status("Importando arquivo aberto…");try{let response;if(/\.(mp3|wav|ogg|oga|flac|m4a|aac|opus|aiff)$/i.test(url.pathname)){response=await fetch("/api/app/media/audio/download",{method:"POST",headers:authHeaders("application/json"),body:JSON.stringify({url:url.href}),cache:"no-store"});}else{response=await fetch(url.href,{mode:"cors",cache:"no-store"});}if(!response.ok)throw new Error("Fonte indisponível");const blob=await response.blob();if(!blob.size||blob.size>12*1024*1024)throw new Error("Arquivo acima de 12 MB");setFile(new File([blob],decodeURIComponent(url.pathname.split("/").pop()||"audio-importado"),{type:blob.type||"audio/mpeg"}));}catch{status("Não consegui importar automaticamente. Baixe o arquivo permitido pela fonte e escolha-o em “Escolher arquivo”.",true);}}else status("Este resultado está hospedado numa plataforma externa. Para editar, importe um arquivo que você tenha direito de usar.");}catch{status("Link de origem inválido. Escolha um arquivo local para editar.",true);}}}
+const params=new URLSearchParams(location.search),title=params.get("title")||"",source=params.get("source");if(title){$("#player-title").textContent=title;$("#track-title").textContent=title;}if(source){
+  try{
+    const url=new URL(source);
+    const host=url.hostname.toLowerCase().replace(/^www\./,"");
+    const openHosts=["upload.wikimedia.org","archive.org"];
+    const platformHosts=["youtube.com","m.youtube.com","music.youtube.com","youtu.be","soundcloud.com","m.soundcloud.com"];
+    const direct=/\.(mp3|wav|ogg|oga|flac|m4a|aac|opus|aiff)$/i.test(url.pathname);
+    const openDirect=url.protocol==="https:"&&openHosts.includes(host)&&direct;
+    const platform=url.protocol==="https:"&&platformHosts.includes(host);
+    $("#source-link").href=url.href;
+    $("#source-link").hidden=true;
+    if(!session?.access_token){status("Entre na Nuvem na mesma aba para carregar o áudio automaticamente.",true);}
+    else if(openDirect||platform){
+      status("Importando áudio para a linha do tempo…");
+      try{
+        const endpoint=platform?"/api/app/media/audio/import":"/api/app/media/audio/download";
+        const response=await fetch(endpoint,{method:"POST",headers:authHeaders("application/json"),body:JSON.stringify({url:url.href}),cache:"no-store"});
+        if(!response.ok){let body={};try{body=await response.json()}catch{}throw new Error(body.error||"Não foi possível importar esse áudio.");}
+        const blob=await response.blob();
+        if(!blob.size||blob.size>12*1024*1024)throw new Error("O arquivo precisa ter até 12 MB para abrir no editor.");
+        const base=(title||"audio-importado").replace(/\.[a-z0-9]{1,5}$/i,"").replace(/[^a-z0-9._ -]/gi,"").trim().slice(0,80)||"audio-importado";
+        setFile(new File([blob],base+".mp3",{type:"audio/mpeg"}));
+        status("Áudio carregado automaticamente. Agora você pode selecionar o trecho e editar.");
+      }catch(error){status(error.message||"Não consegui importar esse áudio. Tente outro resultado.",true);}
+    }else{
+      status("Esta fonte não permite importação automática. Escolha um arquivo compatível que você tenha direito de usar.",true);
+    }
+  }catch{status("Link de origem inválido. Escolha um arquivo local para editar.",true);}
+}
 init();

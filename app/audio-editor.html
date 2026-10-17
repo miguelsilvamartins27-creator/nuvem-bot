@@ -3,7 +3,7 @@
 <body>
 <header class="studio-topbar"><a class="studio-brand" href="/app"><span class="brand-mark">n</span> Nuvem <span class="studio-divider">/</span> <span>Audio Studio</span></a><div class="topbar-right"><span id="auth-state" class="auth-state">Verificando sessão…</span><a class="back-link" href="/app">← Voltar à Nuvem</a></div></header>
 <main class="studio-shell">
-<section class="studio-intro"><div><p class="eyebrow">NUVEM CREATIVE STUDIO</p><h1>Seu áudio.<br><span>Do seu jeito.</span></h1><p class="intro-copy">Um editor em estilo de linha do tempo: importe um arquivo, marque o trecho, ajuste volume e fades e exporte em MP3.</p></div><div class="studio-symbol">♫</div></section>
+<section class="studio-intro"><div><p class="eyebrow">NUVEM CREATIVE STUDIO</p><h1>Seu áudio.<br><span>Do seu jeito.</span></h1><p class="intro-copy">Pesquise um áudio e abra aqui para carregar automaticamente, marcar o trecho, ajustar volume e fades e exportar em MP3.</p></div><div class="studio-symbol">♫</div></section>
 <div class="studio-workspace">
 <aside class="studio-sidebar">
 <div class="panel file-panel"><p class="eyebrow">01 / MÍDIA</p><h2>Importar áudio</h2><p class="muted">MP3, WAV, M4A, OGG ou vídeo com áudio. Máximo de 12 MB por arquivo.</p><label class="upload-zone" for="studio-file"><span class="upload-icon">＋</span><strong>Escolher arquivo</strong><small>Use um arquivo que você tenha direito de editar</small><input id="studio-file" type="file" accept="audio/*,video/mp4,video/webm,video/quicktime,video/x-matroska"></label><div id="file-name" class="file-name">Nenhum arquivo importado</div><a id="source-link" class="source-link" hidden target="_blank" rel="noopener noreferrer">Abrir resultado original ↗</a></div>
@@ -18,4 +18,4 @@
 <div class="trim-slider-row"><label for="start-slider">Início</label><input id="start-slider" type="range" min="0" max="1000" value="0" step="1" disabled><label for="end-slider">Fim</label><input id="end-slider" type="range" min="1" max="1000" value="1000" step="1" disabled></div>
 <div class="timeline-foot"><span>✦ Dica: clique na forma de onda para posicionar a reprodução.</span><span id="file-duration-note">Corte máximo: 180 segundos por exportação.</span></div><audio id="source-player" preload="metadata"></audio></section>
 </div><footer class="studio-footer">NUVEM STUDIO · Arquivos temporários não ficam salvos como biblioteca permanente.</footer></main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/app-assets/audio-editor.js?v=2" defer></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/app-assets/audio-editor.js?v=3" defer></script></body></html>
