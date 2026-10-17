@@ -342,3 +342,51 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .exercise-attribution{font-size:9px;line-height:1.6;color:#77869c;margin:16px 0 0}
 @media(max-width:1050px){.exercise-library-results{grid-template-columns:1fr}.exercise-library-card{grid-template-columns:140px minmax(0,1fr)}}
 @media(max-width:760px){.exercise-library-panel{padding:16px}.exercise-search-form{align-items:stretch;flex-direction:column}.exercise-search-form .button{width:100%}.exercise-quick-search{gap:6px}.exercise-quick-search button{font-size:10px;padding:7px 9px}.exercise-library-card{grid-template-columns:105px minmax(0,1fr);border-radius:13px}.exercise-card-media,.exercise-card-media img{min-height:140px}.exercise-card-body{padding:10px}.exercise-card-heading h3{font-size:12px}.exercise-card-meta{font-size:9px}.exercise-card-actions{display:grid;grid-template-columns:1fr}.exercise-card-actions .button{width:100%;font-size:9px}.exercise-detail{padding:13px}.exercise-detail-layout{grid-template-columns:1fr;gap:14px}.exercise-detail-visual{min-height:170px}.exercise-detail-visual img{max-height:280px}.exercise-detail-top h3{font-size:15px}}
+
+
+/* Nuvem Fit — clear folder-first workflow */
+.fit-workspace-nav{display:flex;flex-wrap:wrap;gap:8px;padding:8px;margin:0 0 24px;border:1px solid var(--line);border-radius:15px;background:#121722}
+.fit-tab{border:1px solid transparent;border-radius:10px;background:transparent;color:#aeb9cb;padding:11px 14px;font-size:12px;font-weight:650;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.fit-tab:hover{background:#1b2635;color:#edf3fb}
+.fit-tab.active{background:#233b3c;border-color:#315e58;color:#a8efd6}
+.fit-subview{display:none;animation:enter .18s ease}
+.fit-subview.active{display:block}
+.fit-page-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:4px 0 20px}
+.fit-page-heading h2{font-size:clamp(23px,2.5vw,30px);letter-spacing:-.7px;margin:7px 0}
+.fit-page-heading .muted{max-width:620px;line-height:1.65;margin:7px 0 0;font-size:12px}
+.exercise-folder-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 14px;align-items:end;margin-bottom:20px}
+.exercise-folder-form label{display:grid;gap:8px;font-size:12px;color:#c7d2e3}
+.exercise-folder-form input{width:100%;min-width:0;border:1px solid #34435a;border-radius:11px;padding:12px 14px;background:#0e1521;color:#f4f6fb;outline:none}
+.exercise-folder-form input:focus{border-color:#76c9b0;box-shadow:0 0 0 3px #76c9b01c}
+.exercise-folder-form .form-footnote{grid-column:1/-1;margin:0;min-height:16px}
+.exercise-folder-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:20px}
+.exercise-folder-card{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:start;padding:18px;border:1px solid #2b394e;border-radius:15px;background:linear-gradient(145deg,#151f2d,#111925);min-width:0}
+.exercise-folder-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#243d3c;font-size:22px}
+.exercise-folder-body{min-width:0}
+.exercise-folder-body h3{font-size:14px;overflow-wrap:anywhere;margin:2px 0 6px}
+.exercise-folder-body p{font-size:11px;color:#9cabc0;margin:0}
+.exercise-folder-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;align-items:center;padding-top:7px;border-top:1px solid #293448}
+.exercise-folder-actions .button{margin:0;padding:9px 12px;font-size:11px}
+.exercise-folder-actions .button-quiet{color:#9faec3}
+.fit-count-pill{display:inline-flex;align-items:center;white-space:nowrap;border:1px solid #31534f;background:#1b3333;color:#a9e8d2;padding:9px 12px;border-radius:999px;font-size:11px}
+.fit-folder-heading{align-items:center}
+.fit-folder-heading>div{min-width:0}
+.fit-folder-heading .button{margin:0 0 14px;padding:8px 11px}
+.exercise-saved-panel{margin-bottom:16px}
+.exercise-folder-saved-list{display:grid;gap:10px}
+.exercise-saved-card{display:grid;grid-template-columns:76px minmax(0,1fr);gap:13px;align-items:center;padding:11px;border:1px solid #2a394e;border-radius:13px;background:#101824}
+.exercise-saved-media{display:grid;place-items:center;width:76px;height:76px;overflow:hidden;border-radius:10px;background:#eaf0f2}
+.exercise-saved-media img{width:100%;height:100%;object-fit:contain}
+.exercise-saved-body{display:grid;gap:6px;min-width:0}
+.exercise-saved-body>strong{font-size:13px;overflow-wrap:anywhere}
+.exercise-saved-body>small{font-size:10px;line-height:1.5;color:#97a8be}
+.exercise-saved-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+.exercise-saved-actions .button{margin:0;padding:7px 10px;font-size:10px}
+.exercise-saved-actions .button-quiet{color:#9faec3}
+.fit-builder-columns{align-items:start}
+.fit-folder-shortcut{align-self:start}
+.fit-folder-shortcut h3{font-size:17px;margin:8px 0}
+.fit-folder-shortcut .button{margin-top:8px}
+.fit-subview .wellness-note{margin-top:20px}
+@media(max-width:1000px){.exercise-folder-list{grid-template-columns:1fr}.fit-builder-columns{grid-template-columns:1fr}}
+@media(max-width:760px){.fit-workspace-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:6px}.fit-tab{padding:11px 8px;font-size:11px;text-align:center}.fit-page-heading{align-items:flex-start;flex-direction:column;gap:10px}.fit-folder-heading{flex-direction:row;align-items:center}.exercise-folder-form{grid-template-columns:1fr}.exercise-folder-form .form-footnote{grid-column:auto}.exercise-folder-actions{justify-content:space-between}.exercise-folder-actions .button{flex:1}.exercise-saved-card{grid-template-columns:60px minmax(0,1fr);gap:10px}.exercise-saved-media{width:60px;height:60px}.exercise-saved-actions .button{font-size:9px;padding:7px 8px}.fit-count-pill{font-size:10px;padding:8px 10px}}
