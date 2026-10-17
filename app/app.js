@@ -1,0 +1,7 @@
+const labels={inicio:"Início",ia:"Assistente IA",midia:"Central de mídia",financas:"Finanças",historico:"Histórico",config:"Configurações"};
+function abrirVista(nome){if(!labels[nome])return;document.querySelectorAll(".view").forEach(el=>el.classList.toggle("active",el.id==="view-"+nome));document.querySelectorAll("[data-view]").forEach(el=>el.classList.toggle("active",el.dataset.view===nome));const crumb=document.querySelector("#crumb");if(crumb)crumb.textContent=labels[nome];window.scrollTo({top:0,behavior:"smooth"});}
+document.querySelectorAll("[data-view]").forEach(el=>el.addEventListener("click",()=>abrirVista(el.dataset.view)));
+async function verificarBackend(){const label=document.querySelector("#connection-label");try{const response=await fetch("/health",{headers:{Accept:"application/json"},cache:"no-store"});if(!response.ok)throw new Error("indisponível");const data=await response.json();if(label)label.textContent=data.online?"Servidor acessível":"Servidor indisponível";}catch{if(label)label.textContent="API ainda não conectada";}}
+verificarBackend();
+if("serviceWorker"in navigator&&location.protocol==="https:"){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}
+document.querySelector("#chat-form")?.addEventListener("submit",event=>event.preventDefault());document.querySelector("#expense-form")?.addEventListener("submit",event=>event.preventDefault());
