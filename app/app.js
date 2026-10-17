@@ -710,8 +710,21 @@ function abrirEditorAudio(item, modo = "edit") {
   if (item?.title) params.set("title", String(item.title).slice(0, 180));
   if (item?.url) params.set("source", item.url);
   if (modo === "send") params.set("action", "send");
-  const tab = window.open("/app/audio-editor" + (params.size ? "?" + params.toString() : ""), "_blank", "noopener");
-  if (!tab) setApiStatus("#audio-search-status", "O navegador bloqueou a nova aba. Permita pop-ups para abrir o editor.", true);
+  const tab = window.open("/app/audio-editor" + (params.size ? "?" + params.toString() : ""), "_blank");
+  if (tab) tab.opener = null;
+  else setApiStatus("#audio-search-status", "O navegador bloqueou a nova aba. Permita pop-ups para abrir o editor.", true);
+}
+async function baixarResultadoAudio(item, button) {
+  if (!session?.access_token) return setApiStatus("#audio-search-status", "Entre na sua conta para baixar áudio.", true);
+  const previous=button.textContent; button.disabled=true; button.textContent="Baixando…";
+  try {
+    const response=await fetch("/api/app/media/audio/download",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json"},body:JSON.stringify({url:item.url}),cache:"no-store"});
+    if(!response.ok){let body={};try{body=await response.json()}catch{}throw new Error(body.error||"Não foi possível baixar este arquivo.")}
+    const blob=await response.blob(); if(!blob.size)throw new Error("O arquivo recebido está vazio.");
+    const objectUrl=URL.createObjectURL(blob),link=document.createElement("a");link.href=objectUrl;link.download=((item.title||"nuvem-audio").replace(/[^\p{L}\p{N}._ -]/gu,"").trim().slice(0,80)||"nuvem-audio")+".mp3";document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+    setApiStatus("#audio-search-status","Download iniciado: "+(item.title||"áudio")+".");
+  }catch(error){setApiStatus("#audio-search-status",error.message||"Falha no download.",true)}
+  finally{button.disabled=false;button.textContent=previous}
 }
 async function enviarResultadoAudioWhatsapp(item, button) {
   if (!session?.access_token) return setApiStatus("#audio-search-status", "Entre na sua conta para enviar áudio.", true);
@@ -721,8 +734,8 @@ async function enviarResultadoAudioWhatsapp(item, button) {
   try {
     const source = new URL(item.url); const allowed = source.protocol === "https:" && (source.hostname === "upload.wikimedia.org" || source.hostname === "archive.org");
     if (!allowed) throw new Error("Esta fonte não permite envio direto. Abra o editor para importar um arquivo compatível.");
-    const response = await fetch(source.href, { mode: "cors", cache: "no-store" });
-    if (!response.ok) throw new Error("Não foi possível obter o arquivo original. Abra a fonte ou use o editor.");
+    const response = await fetch("/api/app/media/audio/download", { method:"POST", headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json"}, body:JSON.stringify({url:source.href}), cache:"no-store" });
+    if (!response.ok) { let body={}; try { body=await response.json(); } catch {} throw new Error(body.error || "Não foi possível obter o arquivo original. Abra o editor."); }
     const blob = await response.blob();
     if (!blob.size || blob.size > 12*1024*1024) throw new Error("O arquivo precisa ter até 12 MB para envio direto. Use o editor para cortar um trecho.");
     const result = await fetch("/api/app/media/audio/send", { method:"POST", headers:{Authorization:"Bearer "+session.access_token,"Content-Type":blob.type||"application/octet-stream"}, body:blob, cache:"no-store" });
@@ -750,9 +763,15 @@ function desenharResultadosAudio(results) {
     if (item.embedUrl) { try { const embed = new URL(item.embedUrl); if (embed.protocol === "https:" && embed.hostname === "www.youtube-nocookie.com" && /^\/embed\/[\w-]{11}$/.test(embed.pathname)) { const frame = document.createElement("iframe"); frame.className = "audio-result-embed"; frame.src = embed.href; frame.title = "Prévia: " + (item.title || "resultado de áudio"); frame.loading = "lazy"; frame.referrerPolicy = "strict-origin-when-cross-origin"; frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"; frame.allowFullscreen = true; content.appendChild(frame); } } catch {} }
     else if (item.downloadable === true && ["upload.wikimedia.org","archive.org"].includes(host)) { const player = node("audio", "media-audio-player"); player.controls = true; player.preload = "none"; player.src = url.href; player.setAttribute("aria-label", "Reproduzir " + (item.title || "áudio")); content.appendChild(player); }
     const actions = node("div", "audio-result-actions");
-    const download = node("a", "media-result-download", "↓ Baixar"); download.href = url.href; download.target = "_blank"; download.rel = "noopener noreferrer";
-    if (item.downloadable === true) { download.setAttribute("download", ((item.title || "nuvem-audio").replace(/[^\p{L}\p{N}._ -]/gu, "").trim().slice(0, 80) || "nuvem-audio")); download.title = "Baixar arquivo da fonte aberta"; }
-    else { download.textContent = "↗ Baixar na fonte"; download.setAttribute("aria-label", "Abrir a plataforma para ver as opções de download"); }
+    let download;
+    if (item.downloadable === true) {
+      download = node("button", "media-result-download", "↓ Baixar"); download.type = "button";
+      download.addEventListener("click", () => baixarResultadoAudio(item, download));
+      download.title = "Baixar arquivo de áudio da fonte aberta";
+    } else {
+      download = node("a", "media-result-download", "↗ Baixar na fonte"); download.href = url.href; download.target = "_blank"; download.rel = "noopener noreferrer";
+      download.setAttribute("aria-label", "Abrir a plataforma para ver as opções de download");
+    }
     actions.appendChild(download);
     const edit = node("button", "audio-action-button", "✂ Editar"); edit.type = "button"; edit.addEventListener("click", () => abrirEditorAudio(item, "edit")); actions.appendChild(edit);
     const send = node("button", "audio-action-button audio-action-send", "↗ WhatsApp"); send.type = "button"; send.addEventListener("click", () => enviarResultadoAudioWhatsapp(item, send)); actions.appendChild(send);
