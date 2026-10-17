@@ -38,7 +38,8 @@ describe('Nuvem AI chat reliability and responsive design', () => {
     assert.ok(html.includes('polish.css?v=4'));
     assert.ok(html.includes('app.js?v=33'));
     assert.ok(css.includes('--n-accent:#397e70'));
-    assert.ok(css.includes('.mobile-nav{display:none!important}'));\n    assert.ok(css.includes('display:flex!important'));
+    assert.ok(css.includes('.mobile-nav{display:none!important}'));
+    assert.ok(css.includes('display:flex!important'));
     assert.ok(css.includes('#view-ia .chat-messages'));
     assert.ok(css.includes('--n-bg:#f2f5f1'));
     assert.ok(css.includes('#view-ia .chat-form textarea'));
