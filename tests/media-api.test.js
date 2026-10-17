@@ -35,7 +35,7 @@ describe('Central de mídia da Nuvem', () => {
     assert.ok(js.includes('/api/app/media/audio'));
     assert.ok(js.includes('/api/app/media/search-audio'));
     assert.ok(js.includes('media-audio-player'));
-    assert.ok(js.includes('Criar e enviar ao WhatsApp'));
+    assert.ok(html.includes('Criar e enviar ao WhatsApp'));
   });
 
   it('a interface mantém o controle de ocultar valores no resumo e nos gráficos', async () => {
