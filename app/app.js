@@ -1,4 +1,4 @@
-const labels={inicio:"Início",ia:"JARVIS",midia:"Central de mídia",financas:"Finanças",lembretes:"Lembretes",historico:"Histórico",config:"Configurações"};
+const labels={inicio:"Início",ia:"JARVIS",figurinhas:"Estúdio de figurinhas",midia:"Central de mídia",financas:"Finanças",lembretes:"Lembretes",historico:"Histórico",config:"Configurações"};
 let supabaseClient=null, session=null, busy=false, vapidPublicKey='';
 const $=selector=>document.querySelector(selector);
 function abrirVista(nome){if(!labels[nome])return;document.querySelectorAll(".view").forEach(el=>el.classList.toggle("active",el.id==="view-"+nome));document.querySelectorAll("[data-view]").forEach(el=>el.classList.toggle("active",el.dataset.view===nome));const crumb=$("#crumb");if(crumb)crumb.textContent=labels[nome];window.scrollTo({top:0,behavior:"smooth"});}
@@ -62,7 +62,7 @@ function drawExpenses(expenses){
 }
 async function loadExpenses(){const data=await api("/api/app/expenses");drawExpenses(data.expenses);}
 async function addExpense(event){event.preventDefault();if(!session)return;const description=$("#expense-description").value.trim(),amount=Number($("#expense-amount").value);const button=$("#expense-submit");button.disabled=true;setApiStatus("#expense-status","Salvando…");try{await api("/api/app/expenses",{method:"POST",body:JSON.stringify({description,amount,spent_at:$("#expense-date")?.value||new Date().toISOString().slice(0,10),category:$("#expense-category-input")?.value||"Outros"})});$("#expense-form").reset();if($("#expense-date"))$("#expense-date").value=localDateHoje();await loadExpenses();setApiStatus("#expense-status","Despesa salva com segurança.");}catch(e){setApiStatus("#expense-status",e.message,true);}finally{button.disabled=false;}}
-function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const expenseDate=$("#expense-date");if(expenseDate)expenseDate.disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable","#sticker-file","#sticker-submit","#audio-file","#audio-submit","#audio-search-query","#audio-search-submit"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";}
+function setAuthenticatedUI(user){const logged=Boolean(user);$("#login-screen").hidden=logged;$("#logout-button").hidden=!logged;$("#chat-input").disabled=!logged;$("#chat-send").disabled=!logged;$("#expense-description").disabled=!logged;$("#expense-amount").disabled=!logged;const expenseDate=$("#expense-date");if(expenseDate)expenseDate.disabled=!logged;const cat=$("#expense-category-input");if(cat)cat.disabled=!logged;$("#expense-submit").disabled=!logged;["#reminder-title","#reminder-note","#reminder-time","#reminder-repeat","#reminder-date","#reminder-submit","#notification-enable","#sticker-editor-file","#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size","#sticker-remove-bg","#sticker-add-pack","#sticker-send-current","#sticker-pack-name","#sticker-create-pack","#sticker-pack-select","#sticker-send-pack","#sticker-delete-pack","#sticker-video-file","#sticker-video-submit","#audio-file","#audio-submit","#audio-search-query","#audio-search-submit"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>{const el=$(s);if(el)el.disabled=!logged;});const label=$("#connection-label");if(label)label.textContent=logged?"Conta autenticada":"API ainda não conectada";setStickerEditorControls();}
 async function loadProfile(){const data=await api("/api/app/me");const p=data.profile||{};$("#profile-name").value=p.display_name||"";$("#profile-assistant").value=p.assistant_name||"Nuvem";$("#profile-language").value=p.language||"pt-BR";$("#profile-style").value=p.response_style||"balanced";["#profile-name","#profile-assistant","#profile-language","#profile-style","#profile-save"].forEach(s=>$(s).disabled=false);setApiStatus("#profile-status","Preferências carregadas.");}
 async function saveProfile(event){event.preventDefault();if(!session)return;const button=$("#profile-save");button.disabled=true;setApiStatus("#profile-status","Salvando preferências…");try{await api("/api/app/me",{method:"PUT",body:JSON.stringify({display_name:$("#profile-name").value,assistant_name:$("#profile-assistant").value,language:$("#profile-language").value,response_style:$("#profile-style").value})});setApiStatus("#profile-status","Preferências salvas.");}catch(e){setApiStatus("#profile-status",e.message,true);}finally{button.disabled=false;}}
 $("#profile-form").addEventListener("submit",saveProfile);
@@ -207,16 +207,330 @@ async function enviarArquivoParaDownload(path, file, statusSelector, button, fal
     button.disabled = !session?.access_token;
   }
 }
-$("#sticker-form")?.addEventListener("submit", async event => {
-  event.preventDefault();
-  const file = $("#sticker-file")?.files?.[0];
-  if (!file) return setApiStatus("#sticker-status", "Escolha uma imagem, GIF ou vídeo.", true);
-  const kind = identificarTipoArquivo(file);
-  if (!["image", "video"].includes(kind)) return setApiStatus("#sticker-status", "Formato não reconhecido. Escolha JPG, PNG, WEBP, GIF, MP4 ou WEBM.", true);
-  const isVideo = kind === "video";
-  const endpoint = isVideo ? "/api/app/media/sticker-video" : "/api/app/media/sticker";
-  await enviarArquivoParaDownload(endpoint, file, "#sticker-status", $("#sticker-submit"), isVideo ? "nuvem-figurinha-animada.webp" : "nuvem-figurinha.webp", true);
+
+const STICKER_PACKS_KEY = "nuvem-sticker-packs-v1";
+const MAX_STICKERS_PER_PACK = 8;
+let stickerSourceImage = null;
+let stickerOriginalCanvas = null;
+let stickerBackgroundRemoved = false;
+let stickerPreviewReady = false;
+let stickerPacks = loadStickerPacks();
+
+function loadStickerPacks() {
+  try {
+    const data = JSON.parse(localStorage.getItem(STICKER_PACKS_KEY) || "[]");
+    return Array.isArray(data) ? data.filter(pack => pack && typeof pack.id === "string" && typeof pack.name === "string" && Array.isArray(pack.stickers)).map(pack => ({...pack, stickers: pack.stickers.filter(item => item && typeof item.dataUrl === "string").slice(0, MAX_STICKERS_PER_PACK)})) : [];
+  } catch { return []; }
+}
+function persistStickerPacks() {
+  try {
+    localStorage.setItem(STICKER_PACKS_KEY, JSON.stringify(stickerPacks));
+    return true;
+  } catch {
+    setApiStatus("#sticker-pack-status", "O armazenamento deste navegador está cheio. Exclua algumas figurinhas ou crie um pacote menor.", true);
+    return false;
+  }
+}
+function selectedStickerPack() {
+  const id = $("#sticker-pack-select")?.value;
+  return stickerPacks.find(pack => pack.id === id) || null;
+}
+function renderStickerPacks() {
+  const select = $("#sticker-pack-select");
+  const grid = $("#sticker-pack-grid");
+  const count = $("#sticker-pack-count");
+  if (!select || !grid) return;
+  const previous = select.value;
+  select.replaceChildren();
+  if (!stickerPacks.length) {
+    const option = node("option", "", "Crie um pacote primeiro");
+    option.value = "";
+    select.appendChild(option);
+  } else {
+    for (const pack of stickerPacks) {
+      const option = node("option", "", pack.name + " (" + pack.stickers.length + "/" + MAX_STICKERS_PER_PACK + ")");
+      option.value = pack.id;
+      select.appendChild(option);
+    }
+    if (stickerPacks.some(pack => pack.id === previous)) select.value = previous;
+  }
+  if (count) count.textContent = stickerPacks.length + (stickerPacks.length === 1 ? " pacote" : " pacotes");
+  const pack = selectedStickerPack();
+  grid.replaceChildren();
+  if (!pack || !pack.stickers.length) {
+    const empty = node("div", "sticker-pack-empty", pack ? "Este pacote ainda está vazio. Adicione uma figurinha pelo editor." : "Crie um pacote para guardar suas figurinhas.");
+    grid.appendChild(empty);
+  } else {
+    pack.stickers.forEach((sticker, index) => {
+      const item = node("div", "sticker-pack-item");
+      const image = node("img", "sticker-pack-thumb");
+      image.src = sticker.dataUrl;
+      image.alt = sticker.caption || "Figurinha " + (index + 1);
+      image.loading = "lazy";
+      const meta = node("small", "", sticker.caption || "Figurinha " + (index + 1));
+      const remove = node("button", "sticker-remove-item", "×");
+      remove.type = "button";
+      remove.setAttribute("aria-label", "Remover figurinha " + (index + 1));
+      remove.addEventListener("click", () => {
+        const current = selectedStickerPack();
+        if (!current) return;
+        current.stickers.splice(index, 1);
+        if (persistStickerPacks()) { renderStickerPacks(); setApiStatus("#sticker-pack-status", "Figurinha removida do pacote."); }
+      });
+      item.append(image, meta, remove);
+      grid.appendChild(item);
+    });
+  }
+  const logged = Boolean(session?.access_token);
+  const hasPack = Boolean(pack);
+  $("#sticker-add-pack").disabled = !logged || !stickerPreviewReady || !hasPack || pack.stickers.length >= MAX_STICKERS_PER_PACK;
+  $("#sticker-send-pack").disabled = !logged || !hasPack || !pack.stickers.length;
+  $("#sticker-delete-pack").disabled = !logged || !hasPack;
+}
+function setStickerEditorControls() {
+  const logged = Boolean(session?.access_token);
+  ["#sticker-editor-file","#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size","#sticker-remove-bg","#sticker-undo-bg","#sticker-create-pack","#sticker-pack-name","#sticker-pack-select","#sticker-video-file","#sticker-video-submit"].forEach(selector => {
+    const el = $(selector);
+    if (el) el.disabled = !logged;
+  });
+  $("#sticker-send-current").disabled = !logged || !stickerPreviewReady;
+  renderStickerPacks();
+}
+function drawImageContained(context, image, width, height) {
+  const scale = Math.min(width / image.width, height / image.height);
+  const w = image.width * scale, h = image.height * scale;
+  context.drawImage(image, (width - w) / 2, (height - h) / 2, w, h);
+}
+function removeUniformBackground(canvas, tolerance = 48) {
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  const width = canvas.width, height = canvas.height;
+  const image = context.getImageData(0, 0, width, height);
+  const data = image.data, count = width * height;
+  let red = 0, green = 0, blue = 0, samples = 0;
+  const sample = (x, y) => {
+    const i = (y * width + x) * 4;
+    if (data[i + 3] < 16) return;
+    red += data[i]; green += data[i + 1]; blue += data[i + 2]; samples++;
+  };
+  for (let x = 0; x < width; x += 8) { sample(x, 0); sample(x, height - 1); }
+  for (let y = 0; y < height; y += 8) { sample(0, y); sample(width - 1, y); }
+  if (!samples) return false;
+  red /= samples; green /= samples; blue /= samples;
+  const queue = new Int32Array(count);
+  const visited = new Uint8Array(count);
+  let head = 0, tail = 0;
+  const enqueue = index => { if (!visited[index]) { visited[index] = 1; queue[tail++] = index; } };
+  for (let x = 0; x < width; x++) { enqueue(x); enqueue((height - 1) * width + x); }
+  for (let y = 0; y < height; y++) { enqueue(y * width); enqueue(y * width + width - 1); }
+  while (head < tail) {
+    const pixel = queue[head++], i = pixel * 4;
+    if (data[i + 3] < 16) continue;
+    const dr = data[i] - red, dg = data[i + 1] - green, db = data[i + 2] - blue;
+    if (Math.sqrt(dr * dr + dg * dg + db * db) > tolerance) continue;
+    data[i + 3] = 0;
+    const x = pixel % width, y = (pixel / width) | 0;
+    if (x > 0) enqueue(pixel - 1);
+    if (x + 1 < width) enqueue(pixel + 1);
+    if (y > 0) enqueue(pixel - width);
+    if (y + 1 < height) enqueue(pixel + width);
+  }
+  context.putImageData(image, 0, 0);
+  return true;
+}
+function renderStickerPreview() {
+  const preview = $("#sticker-preview");
+  if (!preview || !stickerOriginalCanvas) return;
+  const context = preview.getContext("2d");
+  context.clearRect(0, 0, 512, 512);
+  context.drawImage(stickerOriginalCanvas, 0, 0);
+  const caption = ($("#sticker-caption")?.value || "").trim().slice(0, 80);
+  if (caption) {
+    const color = $("#sticker-caption-color")?.value || "#ffffff";
+    const outline = $("#sticker-outline-color")?.value || "#111111";
+    const size = Number($("#sticker-caption-size")?.value || 34);
+    context.font = "900 " + size + "px system-ui, sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "bottom";
+    context.lineJoin = "round";
+    const words = caption.split(/\s+/);
+    const lines = [];
+    let line = "";
+    for (const word of words) {
+      const next = line ? line + " " + word : word;
+      if (context.measureText(next).width > 470 && line) { lines.push(line); line = word; } else line = next;
+    }
+    if (line) lines.push(line);
+    const visible = lines.slice(-3);
+    const lineHeight = size * 1.08;
+    let y = 494 - (visible.length - 1) * lineHeight;
+    for (const textLine of visible) {
+      context.strokeStyle = outline;
+      context.lineWidth = Math.max(3, size / 7);
+      context.strokeText(textLine, 256, y, 470);
+      context.fillStyle = color;
+      context.fillText(textLine, 256, y, 470);
+      y -= lineHeight;
+    }
+  }
+  stickerPreviewReady = true;
+  $("#sticker-preview-empty").hidden = true;
+  $("#sticker-send-current").disabled = !session?.access_token;
+  renderStickerPacks();
+}
+function readStickerFile(file) {
+  if (!file) return;
+  if (file.size > 12 * 1024 * 1024) { setApiStatus("#sticker-editor-status", "O limite é 12 MB por imagem.", true); return; }
+  if (identificarTipoArquivo(file) !== "image") { setApiStatus("#sticker-editor-status", "Escolha uma imagem. Para animadas, use o campo de vídeo abaixo.", true); return; }
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    stickerSourceImage = image;
+    stickerOriginalCanvas = document.createElement("canvas");
+    stickerOriginalCanvas.width = stickerOriginalCanvas.height = 512;
+    drawImageContained(stickerOriginalCanvas.getContext("2d"), image, 512, 512);
+    stickerBackgroundRemoved = false;
+    $("#sticker-undo-bg").disabled = true;
+    $("#sticker-remove-bg").disabled = false;
+    $("#sticker-caption").disabled = false;
+    $("#sticker-caption-color").disabled = false;
+    $("#sticker-outline-color").disabled = false;
+    $("#sticker-caption-size").disabled = false;
+    setApiStatus("#sticker-editor-status", "Imagem carregada. Edite o texto e confira a prévia.");
+    renderStickerPreview();
+  };
+  image.onerror = () => { URL.revokeObjectURL(objectUrl); setApiStatus("#sticker-editor-status", "Não consegui abrir essa imagem. Tente outro arquivo.", true); };
+  image.src = objectUrl;
+}
+async function exportStickerBlob() {
+  const canvas = $("#sticker-preview");
+  if (!canvas || !stickerPreviewReady) throw new Error("Escolha uma imagem para criar a figurinha.");
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", 0.78));
+  if (!blob || blob.type !== "image/webp") throw new Error("Este navegador não conseguiu criar uma figurinha WEBP. Tente usar Chrome ou Edge atualizado.");
+  if (blob.size > 1_000_000) throw new Error("A figurinha ficou acima de 1 MB. Reduza o texto ou escolha uma imagem mais simples.");
+  return blob;
+}
+async function sendStickerBlob(blob) {
+  if (!session?.access_token) throw new Error("Entre na Nuvem novamente.");
+  const response = await fetch("/api/app/media/sticker/send", { method: "POST", headers: { Authorization: "Bearer " + session.access_token, "Content-Type": "image/webp" }, body: blob, cache: "no-store" });
+  let result = {};
+  try { result = await response.json(); } catch {}
+  if (!response.ok) throw new Error(result.error || "Não consegui enviar ao WhatsApp.");
+  return result;
+}
+async function blobToDataUrl(blob) {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Não consegui preparar a figurinha para guardar no pacote."));
+    reader.readAsDataURL(blob);
+  });
+}
+$("#sticker-editor-file")?.addEventListener("change", event => {
+  const file = event.target.files?.[0];
+  if (file) readStickerFile(file);
 });
+["#sticker-caption","#sticker-caption-color","#sticker-outline-color","#sticker-caption-size"].forEach(selector => $(selector)?.addEventListener("input", renderStickerPreview));
+$("#sticker-remove-bg")?.addEventListener("click", () => {
+  if (!stickerOriginalCanvas) return;
+  try {
+    const edited = document.createElement("canvas");
+    edited.width = edited.height = 512;
+    edited.getContext("2d").drawImage(stickerOriginalCanvas, 0, 0);
+    if (!removeUniformBackground(edited, 48)) throw new Error("Não encontrei pixels de fundo para remover.");
+    stickerOriginalCanvas = edited;
+    stickerBackgroundRemoved = true;
+    $("#sticker-undo-bg").disabled = false;
+    setApiStatus("#sticker-editor-status", "Fundo uniforme removido. Confira as bordas antes de enviar.");
+    renderStickerPreview();
+  } catch (error) { setApiStatus("#sticker-editor-status", error.message || "Não consegui remover o fundo.", true); }
+});
+$("#sticker-undo-bg")?.addEventListener("click", () => {
+  if (!stickerSourceImage) return;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 512;
+  drawImageContained(canvas.getContext("2d"), stickerSourceImage, 512, 512);
+  stickerOriginalCanvas = canvas;
+  stickerBackgroundRemoved = false;
+  $("#sticker-undo-bg").disabled = true;
+  setApiStatus("#sticker-editor-status", "Recorte desfeito.");
+  renderStickerPreview();
+});
+$("#sticker-create-pack")?.addEventListener("click", () => {
+  const name = ($("#sticker-pack-name")?.value || "").trim().replace(/\s+/g, " ").slice(0, 48);
+  if (!name) return setApiStatus("#sticker-pack-status", "Digite um nome para o pacote.", true);
+  if (stickerPacks.some(pack => pack.name.toLowerCase() === name.toLowerCase())) return setApiStatus("#sticker-pack-status", "Você já tem um pacote com esse nome.", true);
+  const pack = { id: (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(16).slice(2)), name, stickers: [] };
+  stickerPacks.push(pack);
+  if (!persistStickerPacks()) { stickerPacks.pop(); return; }
+  $("#sticker-pack-name").value = "";
+  renderStickerPacks();
+  $("#sticker-pack-select").value = pack.id;
+  renderStickerPacks();
+  setApiStatus("#sticker-pack-status", "Pacote criado neste navegador.");
+});
+$("#sticker-pack-select")?.addEventListener("change", renderStickerPacks);
+$("#sticker-add-pack")?.addEventListener("click", async () => {
+  const pack = selectedStickerPack();
+  if (!pack) return setApiStatus("#sticker-pack-status", "Crie ou selecione um pacote primeiro.", true);
+  if (pack.stickers.length >= MAX_STICKERS_PER_PACK) return setApiStatus("#sticker-pack-status", "Cada pacote aceita até 8 figurinhas nesta versão.", true);
+  const button = $("#sticker-add-pack");
+  button.disabled = true;
+  try {
+    const blob = await exportStickerBlob();
+    const dataUrl = await blobToDataUrl(blob);
+    pack.stickers.push({ id: (crypto.randomUUID?.() || String(Date.now())), dataUrl, caption: ($("#sticker-caption")?.value || "").trim().slice(0, 80) });
+    if (!persistStickerPacks()) { pack.stickers.pop(); return; }
+    renderStickerPacks();
+    setApiStatus("#sticker-pack-status", "Figurinha adicionada a “" + pack.name + "”.");
+    setApiStatus("#sticker-editor-status", "Figurinha guardada no pacote. Você ainda pode enviá-la ao WhatsApp.");
+  } catch (error) { setApiStatus("#sticker-editor-status", error.message, true); }
+  finally { button.disabled = !session?.access_token || !stickerPreviewReady || !selectedStickerPack() || selectedStickerPack().stickers.length >= MAX_STICKERS_PER_PACK; }
+});
+$("#sticker-send-current")?.addEventListener("click", async () => {
+  const button = $("#sticker-send-current");
+  button.disabled = true;
+  setApiStatus("#sticker-editor-status", "Preparando e enviando a figurinha…");
+  try {
+    const blob = await exportStickerBlob();
+    await sendStickerBlob(blob);
+    setApiStatus("#sticker-editor-status", "✓ Figurinha enviada diretamente ao WhatsApp.");
+  } catch (error) { setApiStatus("#sticker-editor-status", error.message || "Falha no envio.", true); }
+  finally { button.disabled = !session?.access_token || !stickerPreviewReady; }
+});
+$("#sticker-send-pack")?.addEventListener("click", async () => {
+  const pack = selectedStickerPack();
+  if (!pack?.stickers.length) return setApiStatus("#sticker-pack-status", "Este pacote ainda não tem figurinhas.", true);
+  const button = $("#sticker-send-pack");
+  button.disabled = true;
+  let sent = 0;
+  setApiStatus("#sticker-pack-status", "Enviando pacote “" + pack.name + "”…");
+  try {
+    for (const sticker of pack.stickers) {
+      const response = await fetch(sticker.dataUrl);
+      const blob = await response.blob();
+      await sendStickerBlob(blob);
+      sent++;
+    }
+    setApiStatus("#sticker-pack-status", "✓ " + sent + " figurinhas enviadas ao WhatsApp como mensagens.");
+  } catch (error) {
+    setApiStatus("#sticker-pack-status", sent + " de " + pack.stickers.length + " enviadas. " + (error.message || "O envio parou."), true);
+  } finally { renderStickerPacks(); }
+});
+$("#sticker-delete-pack")?.addEventListener("click", () => {
+  const pack = selectedStickerPack();
+  if (!pack) return;
+  stickerPacks = stickerPacks.filter(item => item.id !== pack.id);
+  if (persistStickerPacks()) { renderStickerPacks(); setApiStatus("#sticker-pack-status", "Pacote excluído deste navegador."); }
+});
+$("#sticker-video-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const file = $("#sticker-video-file")?.files?.[0];
+  if (!file) return setApiStatus("#sticker-video-status", "Escolha um vídeo primeiro.", true);
+  if (identificarTipoArquivo(file) !== "video") return setApiStatus("#sticker-video-status", "Escolha um arquivo de vídeo compatível.", true);
+  await enviarArquivoParaDownload("/api/app/media/sticker-video", file, "#sticker-video-status", $("#sticker-video-submit"), "nuvem-figurinha-animada.webp", true);
+});
+
 $("#audio-form")?.addEventListener("submit", async event => {
   event.preventDefault();
   const file = $("#audio-file")?.files?.[0];
