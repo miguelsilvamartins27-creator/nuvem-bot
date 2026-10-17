@@ -1075,23 +1075,3 @@ html[data-theme="dark"] .login-card input{background:#292a26!important;color:#ee
 @media(max-width:760px){html[data-theme="light"] .login-card{box-shadow:0 10px 35px #292a2412!important}.app-shell .exercise-card-media img,.app-shell .exercise-saved-media img{width:100%;height:100%;object-fit:contain}}
 
 
-/* Keep the X-inspired dark palette consistent if the saved preference was previously light. */
-html[data-theme="light"]{color-scheme:dark;--bg:#000;--panel:#0b0b0d;--line:#24262a;--text:#e7e9ea;--muted:#71767b;--accent:#1d9bf0;--accent-soft:#102334;--surface:#111214;--purple:#1d9bf0;--green:#4ade80;--blue:#1d9bf0}
-html[data-theme="light"] body,html[data-theme="light"] .app-shell{background:#000!important;color:#e7e9ea!important}
-html[data-theme="light"] .app-shell .sidebar{background:#000!important;border-right:1px solid #24262a!important;box-shadow:none!important}
-html[data-theme="light"] .app-shell .topbar{background:rgba(0,0,0,.94)!important;border-color:#24262a!important;backdrop-filter:blur(16px)}
-html[data-theme="light"] .app-shell :is(.welcome-row,.wellness-hero,.money-hero,.reminder-hero){background:transparent!important;border-color:#24262a!important}
-html[data-theme="light"] .app-shell :is(.notice,.feature-card,.panel,.tool-card,.stat-card,.wellness-panel,.wellness-stat,.exercise-folder-card,.expense-card,.history-item,.settings-list,.theme-setting-card,.ai-side-card,.ai-chat-remastered,.sticker-editor-panel,.sticker-pack-panel,.media-tool-card,.media-search-card,.dashboard-productivity,.dashboard-stat,.dashboard-quick-task){background:#08090a!important;color:#e7e9ea!important;border-color:#24262a!important;box-shadow:none!important}
-html[data-theme="light"] .app-shell :is(.feature-title,.panel h2,.panel h3,.panel h4,.tool-card h3,.setting-row strong){color:#e7e9ea!important}
-html[data-theme="light"] .app-shell :is(.eyebrow,.lead,.muted,.muted-text,.feature-desc,.form-footnote){color:#a1a1aa!important}
-html[data-theme="light"] .app-shell :is(input:not([type=range]):not([type=checkbox]):not([type=radio]),textarea,select,.chat-form){background:#0b0b0d!important;color:#e7e9ea!important;border-color:#2f3336!important}
-html[data-theme="light"] .app-shell :is(.button-primary,.primary-button,.send-button,#quick-task-submit){background:#1d9bf0!important;color:#fff!important;border-color:#1d9bf0!important;box-shadow:none!important}
-html[data-theme="light"] .app-shell :is(.button-secondary,.secondary-button,.button-quiet){background:#16181c!important;color:#e7e9ea!important;border-color:#2f3336!important;box-shadow:none!important}
-html[data-theme="light"] .app-shell .mobile-nav{background:rgba(0,0,0,.96)!important;border-color:#24262a!important;box-shadow:0 -8px 24px #0008!important;backdrop-filter:blur(18px)}
-html[data-theme="light"] .app-shell .mobile-nav-item{color:#71767b!important}
-html[data-theme="light"] .app-shell .mobile-nav-item.active{color:#1d9bf0!important;background:transparent!important}
-html[data-theme="light"] .app-shell :is(.avatar,.theme-toggle,.logout-button,.connection-pill){background:#08090a!important;color:#e7e9ea!important;border-color:#24262a!important}
-html[data-theme="light"] .app-shell .assistant-message{background:#0b0b0d!important;color:#e7e9ea!important;border-color:#24262a!important}
-html[data-theme="light"] .app-shell .user-message{background:#102334!important;color:#e7e9ea!important;border-color:#17486b!important}
-html[data-theme="light"] .app-shell .mobile-more-menu{background:#0b0b0d!important;color:#e7e9ea!important;border-color:#2f3336!important}
-html[data-theme="light"] .app-shell .mobile-more-menu button{color:#e7e9ea!important}
