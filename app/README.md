@@ -1,23 +1,31 @@
 # Nuvem — app pessoal para iPhone
 
-Esta pasta contém a primeira versão da interface web instalável (PWA) do app pessoal. É apenas a camada visual, não uma versão funcional completa nem um sistema de autenticação.
+A pasta contém a interface PWA e a API inicial do app. Ainda é uma versão de desenvolvimento; não disponibilize dados pessoais até concluir configuração e testes.
 
-## O que existe nesta base
-- Interface responsiva para iPhone e desktop.
-- Navegação entre início, IA, mídia, finanças, histórico e configurações.
-- Manifesto e service worker para instalação/cache da interface.
-- Estados explícitos de preparação para não fingir que APIs já funcionam.
-- Consulta visual do endpoint /health quando a interface é hospedada na mesma origem do backend.
+## Interface e endpoints
+- `GET /app/`: serve a interface.
+- `GET /api/app/config`: entrega apenas URL do Supabase e chave anon pública para iniciar login.
+- `/api/app/me`: perfil pessoal.
+- `/api/app/chat`: histórico e conversa com o roteador de IA existente.
+- `/api/app/expenses`: listar, registrar e excluir despesas.
+- Todas as rotas de dados exigem token Bearer válido do Supabase Auth e correspondência exata com `APP_ALLOWED_EMAIL`.
 
-## Antes de disponibilizar para uso real
-1. Adicionar autenticação privada com Supabase Auth.
-2. Verificar o token Supabase no servidor em todas as rotas privadas.
-3. Nunca expor SUPABASE_SERVICE_ROLE_KEY, chaves Groq ou credenciais do WhatsApp no frontend.
-4. Criar tabelas isoladas do app com políticas RLS e validar permissões.
-5. Implementar endpoints autenticados para chat, finanças, perfil e ferramentas de mídia.
-6. Definir limites de upload, tipo de arquivo, timeout e controle de custo.
-7. Testar sem alterar a tabela/sessão Baileys existente.
-8. Publicar apenas após testes de integração e revisão de segurança.
+## Configuração obrigatória no Render
+Adicionar as variáveis abaixo sem remover as existentes:
+- `SUPABASE_URL`: URL atual do projeto Supabase.
+- `SUPABASE_ANON_KEY`: chave anon/public do mesmo projeto, nunca a service role.
+- `APP_ALLOWED_EMAIL`: e-mail exato da única conta autorizada.
 
-## Limitação desta etapa
-O chat, as ferramentas de mídia e as finanças estão desativados até que as APIs seguras sejam implementadas. Os valores de finanças são intencionalmente vazios, não dados reais.
+Manter as variáveis Groq e Supabase existentes do bot sem compartilhar seus valores. A service role continua somente no backend.
+
+## Configuração no Supabase
+1. Criar o usuário pessoal em Authentication → Users, com e-mail e senha fortes. Não há cadastro público no app.
+2. Revisar e executar `app/supabase-migration.sql` no SQL Editor.
+3. Confirmar que o usuário criado tem exatamente o e-mail definido em `APP_ALLOWED_EMAIL`.
+4. Nunca executar comandos que apaguem ou recriem `baileys_auth`; a migração só cria tabelas novas do app.
+
+## Limites e segurança
+O servidor valida a sessão com Supabase Auth em cada rota privada e filtra os dados pelo ID do usuário validado. O app não recebe a chave service role nem a chave Groq. Chat limita cada mensagem a 4000 caracteres. Uploads ainda não estão implementados. Use HTTPS, MFA no painel e mantenha o repositório privado.
+
+## Limitação importante
+O login e as APIs dependem das variáveis de ambiente e da migração SQL. Não use finanças/histórico antes dessas etapas. O app ainda precisa de testes integrados no Render antes de ser considerado pronto.
