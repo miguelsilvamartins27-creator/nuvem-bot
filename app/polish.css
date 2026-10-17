@@ -663,3 +663,32 @@ body{margin:0}
   #view-ia .typing-dot{animation:none}
   #view-ia .chat-messages{scroll-behavior:auto}
 }
+
+
+/* Final component cleanup: remove leftover violet surfaces and keep media in its frame */
+.app-shell .button-secondary{background:var(--nuvem-surface-soft)!important;color:var(--nuvem-text)!important;border:1px solid var(--nuvem-border)!important}
+.app-shell .setting-state{background:var(--nuvem-surface-soft)!important;color:var(--nuvem-accent-strong)!important;border:1px solid var(--nuvem-border)!important}
+.app-shell .feature-icon,.app-shell .tool-icon,.app-shell .notice-icon,.app-shell .dashboard-stat-icon,
+.app-shell .sticker-upload-icon,.app-shell .meal-photo-preview>span{
+  background:var(--nuvem-surface-soft)!important;color:var(--nuvem-accent)!important;border-color:var(--nuvem-border)!important;box-shadow:none!important
+}
+.app-shell .progress-track{background:var(--nuvem-surface-soft)!important}
+.app-shell .progress-track span{background:var(--nuvem-accent)!important}
+.app-shell .ai-hero-orbit,.app-shell .hero-orb{box-shadow:none!important}
+.app-shell .audio-result-card{min-width:0;overflow:hidden;border-color:var(--nuvem-border)!important;background:var(--nuvem-surface)!important}
+.app-shell .audio-result-media{position:relative;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:16/9;min-height:100px;max-height:230px;overflow:hidden;background:var(--nuvem-surface-soft)!important;border-radius:10px}
+.app-shell .audio-result-media img{display:block;width:100%;height:100%;max-height:none;object-fit:cover;object-position:center}
+.app-shell .audio-result-media-fallback{color:var(--nuvem-muted);font-size:12px}
+.app-shell .audio-cover-unavailable{padding:18px;text-align:center}
+.app-shell .sticker-pack-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px;align-items:start}
+.app-shell .sticker-pack-item{min-width:0;overflow:hidden;border:1px solid var(--nuvem-border)!important;border-radius:12px;background:var(--nuvem-surface-raised)!important}
+.app-shell .sticker-pack-thumb{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:contain;object-position:center;padding:8px;background:var(--nuvem-surface-soft)!important}
+.app-shell #sticker-preview{display:block;width:min(100%,420px);height:auto;aspect-ratio:1;object-fit:contain;background:var(--nuvem-surface-soft);border:1px solid var(--nuvem-border);border-radius:14px}
+.app-shell .meal-photo-preview{display:flex;align-items:center;justify-content:center;min-height:170px;max-height:300px;aspect-ratio:4/3;background:var(--nuvem-surface-soft)!important;border-color:var(--nuvem-border)!important}
+.app-shell .meal-photo-preview img{width:100%;height:100%;max-height:280px;object-fit:contain;object-position:center}
+@media(max-width:760px){
+  .app-shell .sticker-pack-grid{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+  .app-shell .audio-result-media{min-height:90px;max-height:190px}
+  .app-shell #sticker-preview{width:min(100%,340px);margin-inline:auto}
+  .app-shell .meal-photo-preview{min-height:150px}
+}
