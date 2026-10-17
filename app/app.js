@@ -228,7 +228,10 @@ function desenharResultadosAudio(results) {
   const area = $("#audio-search-results");
   if (!area) return;
   area.replaceChildren();
-  if (!results.length) { area.appendChild(node("p", "muted", "Nenhum resultado com licença aberta foi encontrado. Tente outro termo.")); return; }
+  if (!results.length) {
+    area.appendChild(node("p", "muted", "Nenhum áudio com licença aberta foi encontrado. Tente outro termo ou pesquise em inglês."));
+    return;
+  }
   for (const item of results) {
     let url;
     try { url = new URL(item.url); } catch { continue; }
@@ -236,12 +239,21 @@ function desenharResultadosAudio(results) {
     const card = node("article", "media-result");
     const details = node("div", "media-result-details");
     details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "", item.source || "Fonte aberta"));
-    const link = node("a", "media-result-link", "Abrir áudio ↗");
+    const player = node("audio", "media-audio-player");
+    player.controls = true;
+    player.preload = "none";
+    player.src = url.href;
+    player.setAttribute("aria-label", "Reproduzir " + (item.title || "áudio"));
+    player.addEventListener("error", () => {
+      const note = node("small", "muted", "Este arquivo não pôde ser reproduzido aqui. Use o link para abrir a fonte.");
+      if (!card.contains(note)) card.appendChild(note);
+    }, { once: true });
+    const link = node("a", "media-result-link", "Abrir ou salvar áudio ↗");
     link.href = url.href;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.setAttribute("aria-label", "Abrir " + (item.title || "áudio") + " em nova aba");
-    card.append(details, link);
+    card.append(details, player, link);
     area.appendChild(card);
   }
 }
