@@ -119,7 +119,7 @@ function renderSavedExercises(){
   if(!folder.exercises.length){area.appendChild(node("p","muted","Esta pasta ainda está vazia. Use a pesquisa abaixo para adicionar seu primeiro exercício."));return;}
   for(const exercise of folder.exercises){
     const card=node("article","exercise-saved-card"),media=node("div","exercise-saved-media"),img=document.createElement("img"),body=node("div","exercise-saved-body"),title=node("strong","",exercise.name||exercise.displayName),meta=node("small","", [exercise.group,exercise.equipment].filter(Boolean).join(" · ")),actions=node("div","exercise-saved-actions"),details=node("button","button button-quiet","Como fazer"),add=node("button","button button-secondary","＋ No treino"),remove=node("button","button button-quiet","Remover");
-    if(exercise.gifUrl){img.src=exercise.gifUrl;img.alt="Demonstração de "+exercise.name;img.loading="lazy";img.onerror=()=>{img.hidden=true;};media.appendChild(img);}else media.appendChild(node("span","","✦"));
+    if(exercise.gifUrl){img.src=exercise.gifUrl;img.alt="Demonstração de "+exercise.name;img.loading="eager";img.decoding="async";img.onerror=()=>{img.hidden=true;media.classList.add("exercise-image-missing");media.append(node("span","exercise-image-fallback","Demonstração indisponível"));};media.appendChild(img);}else media.appendChild(node("span","","✦"));
     details.type=add.type=remove.type="button";details.addEventListener("click",()=>showExerciseDetail(exercise));add.addEventListener("click",()=>{addExerciseRow({name:exercise.name,sets:3,reps:"8–12"});if(!$("#fit-title").value.trim())$("#fit-title").value="Treino do dia";setApiStatus("#fit-status","✓ "+exercise.name+" adicionado à sessão. Ajuste séries e repetições.");switchFitSubpage("builder");});remove.addEventListener("click",()=>{folder.exercises=folder.exercises.filter(item=>item!==exercise);saveExerciseFolders();renderExerciseFolders();renderSavedExercises();});
     body.append(title,meta);actions.append(details,add,remove);body.appendChild(actions);card.append(media,body);area.appendChild(card);
   }
@@ -139,7 +139,7 @@ function drawExerciseSuggestions(items){
   if(!items.length){const empty=node("div","exercise-library-empty");empty.append(node("span","","⌕"),node("strong","","Nenhum resultado encontrado"),node("small","","Tente o nome popular em português, como supino reto, puxada alta, cadeira extensora ou rosca martelo."));area.appendChild(empty);return;}
   for(const exercise of items){
     const card=node("article","exercise-library-card"),media=node("div","exercise-card-media"),image=document.createElement("img"),body=node("div","exercise-card-body"),heading=node("div","exercise-card-heading"),title=node("h3","",exercise.displayName||exercise.name),group=node("span","exercise-group",exercise.group||"Exercício"),meta=node("p","exercise-card-meta",[exerciseMeta(exercise.targetMuscles),exerciseMeta(exercise.equipment)].filter(Boolean).join(" · "));
-    image.src=exercise.gifUrl;image.alt="Demonstração animada de "+(exercise.displayName||exercise.name);image.loading="lazy";image.decoding="async";image.onerror=()=>{image.hidden=true;media.classList.add("exercise-image-missing");media.append(node("span","","Demonstração indisponível"));};
+    image.src=exercise.gifUrl;image.alt="Demonstração animada de "+(exercise.displayName||exercise.name);image.loading="eager";image.decoding="async";image.onerror=()=>{image.hidden=true;media.classList.add("exercise-image-missing");media.append(node("span","exercise-image-fallback","Demonstração indisponível"));};
     media.appendChild(image);heading.append(title,group);body.append(heading,meta);
     const actions=node("div","exercise-card-actions"),details=node("button","button button-secondary","Ver como fazer"),add=node("button","button button-primary","＋ Guardar na pasta");
     details.type=add.type="button";
@@ -153,7 +153,7 @@ function showExerciseDetail(exercise){
   const top=node("div","exercise-detail-top"),title=node("div","",undefined),heading=node("h3","",exercise.displayName||exercise.name),sub=node("p","exercise-card-meta",[exercise.group,exercise.equipment].filter(Boolean).join(" · ")),close=node("button","exercise-detail-close","Fechar ×");
   title.append(heading,sub);close.type="button";close.addEventListener("click",()=>{area.hidden=true;});top.append(title,close);
   const layout=node("div","exercise-detail-layout"),visual=node("div","exercise-detail-visual"),image=document.createElement("img"),instructions=node("div","exercise-detail-instructions");
-  image.src=exercise.gifUrl;image.alt="Demonstração do exercício "+(exercise.displayName||exercise.name);image.loading="lazy";image.onerror=()=>{image.hidden=true;visual.append(node("p","muted","A animação não carregou. Confira as instruções abaixo."));};visual.appendChild(image);
+  image.src=exercise.gifUrl;image.alt="Demonstração do exercício "+(exercise.displayName||exercise.name);image.loading="eager";image.decoding="async";image.onerror=()=>{image.hidden=true;visual.classList.add("exercise-image-missing");visual.append(node("p","muted","Demonstração indisponível nesta conexão. Confira as instruções abaixo."));};visual.appendChild(image);
   instructions.appendChild(node("h4","","Como fazer"));
   const steps=Array.isArray(exercise.howTo)?exercise.howTo:[];if(steps.length){const list=document.createElement("ol");for(const step of steps)list.appendChild(node("li","",String(step)));instructions.appendChild(list);}else instructions.appendChild(node("p","muted","A fonte não retornou um passo a passo para este exercício. Comece com pouca carga e peça orientação a um profissional."));
   const cues=Array.isArray(exercise.cues)?exercise.cues:[];if(cues.length){instructions.appendChild(node("h4","","Pontos de atenção"));const list=document.createElement("ul");for(const cue of cues)list.appendChild(node("li","",String(cue)));instructions.appendChild(list);}
@@ -783,8 +783,32 @@ function desenharResultadosAudio(results) {
     const trusted = ["youtube.com","m.youtube.com","music.youtube.com","youtu.be","youtube-nocookie.com","soundcloud.com","m.soundcloud.com","upload.wikimedia.org","archive.org"].includes(host); if (!trusted) continue;
     const card = node("article", "media-result audio-result-card"); const media = node("div", "audio-result-media"); let thumbnailUrl = "";
     try { const candidate = new URL(item.thumbnail || ""); const imageHost = candidate.hostname.toLowerCase().replace(/^www\./, ""); const validImageHost = ["i.ytimg.com","img.youtube.com","upload.wikimedia.org","archive.org"].includes(imageHost) || imageHost.endsWith(".sndcdn.com") || imageHost === "soundcloud.com"; if (candidate.protocol === "https:" && validImageHost) thumbnailUrl = candidate.href; } catch {}
-    if (thumbnailUrl) { const image = document.createElement("img"); image.src = thumbnailUrl; image.alt = "Capa de " + (item.title || "resultado"); image.loading = "lazy"; image.referrerPolicy = "no-referrer"; image.onerror = () => { image.remove(); media.classList.add("audio-result-media-fallback"); media.textContent = "♫"; }; media.appendChild(image); }
-    else { media.classList.add("audio-result-media-fallback"); media.appendChild(node("span", "", item.source?.includes("YouTube") ? "▶" : "♫")); }
+    if (!thumbnailUrl && item.embedUrl) {
+      try {
+        const candidate = new URL(item.embedUrl);
+        const match = candidate.hostname === "www.youtube-nocookie.com" ? candidate.pathname.match(/^\/embed\/([\w-]{11})$/) : null;
+        if (candidate.protocol === "https:" && match) thumbnailUrl = "https://i.ytimg.com/vi/" + match[1] + "/hqdefault.jpg";
+      } catch {}
+    }
+    if (thumbnailUrl) {
+      const image = document.createElement("img");
+      image.src = thumbnailUrl; image.alt = "Capa de " + (item.title || "resultado"); image.loading = "lazy"; image.decoding = "async";
+      image.onerror = () => {
+        if (image.dataset.fallbackTried !== "1" && item.embedUrl) {
+          try {
+            const candidate = new URL(item.embedUrl);
+            const match = candidate.hostname === "www.youtube-nocookie.com" ? candidate.pathname.match(/^\/embed\/([\w-]{11})$/) : null;
+            if (candidate.protocol === "https:" && match) { image.dataset.fallbackTried = "1"; image.src = "https://i.ytimg.com/vi/" + match[1] + "/mqdefault.jpg"; return; }
+          } catch {}
+        }
+        image.remove(); media.classList.add("audio-result-media-fallback");
+        media.replaceChildren(node("span", "audio-cover-unavailable", "Capa indisponível"));
+      };
+      media.appendChild(image);
+    } else {
+      media.classList.add("audio-result-media-fallback");
+      media.appendChild(node("span", "audio-cover-unavailable", "Prévia indisponível"));
+    }
     const content = node("div", "audio-result-content"); const details = node("div", "media-result-details");
     details.append(node("strong", "", item.title || "Áudio sem título"), node("small", "audio-result-source", item.source || "Fonte"), node("small", "muted", item.duration ? "Duração: " + Math.floor(item.duration / 60) + ":" + String(Math.floor(item.duration % 60)).padStart(2, "0") : (item.downloadable ? "Arquivo aberto · confira a licença" : "Abra no editor para importar e editar automaticamente, quando disponível"))); content.appendChild(details);
     if (item.embedUrl) { try { const embed = new URL(item.embedUrl); if (embed.protocol === "https:" && embed.hostname === "www.youtube-nocookie.com" && /^\/embed\/[\w-]{11}$/.test(embed.pathname)) { const frame = document.createElement("iframe"); frame.className = "audio-result-embed"; frame.src = embed.href; frame.title = "Prévia: " + (item.title || "resultado de áudio"); frame.loading = "lazy"; frame.referrerPolicy = "strict-origin-when-cross-origin"; frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"; frame.allowFullscreen = true; content.appendChild(frame); } } catch {} }
