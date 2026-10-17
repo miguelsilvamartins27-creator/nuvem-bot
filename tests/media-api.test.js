@@ -28,14 +28,19 @@ describe('Central de mídia da Nuvem', () => {
   it('interface contém formulários reais ligados às ferramentas', async () => {
     const html = await fs.readFile(htmlUrl, 'utf8');
     const js = await fs.readFile(jsUrl, 'utf8');
-    for (const id of ['sticker-form', 'audio-form', 'audio-search-form']) {
+    for (const id of ['sticker-editor-file', 'sticker-video-form', 'audio-form', 'audio-search-form']) {
       assert.ok(html.includes('id="' + id + '"'), 'formulário ausente: ' + id);
     }
     assert.ok(js.includes('/api/app/media/sticker-video'));
     assert.ok(js.includes('/api/app/media/audio'));
     assert.ok(js.includes('/api/app/media/search-audio'));
     assert.ok(js.includes('media-audio-player'));
-    assert.ok(html.includes('Criar e enviar ao WhatsApp'));
+    assert.ok(html.includes('Enviar figurinha ao WhatsApp'));
+    assert.ok(html.includes('Remover fundo uniforme'));
+    assert.ok(html.includes('sticker-pack-select'));
+    assert.ok(js.includes('MAX_STICKERS_PER_PACK = 8'));
+    assert.ok(js.includes('removeUniformBackground'));
+    assert.ok(html.includes('id="view-figurinhas"'));
   });
 
   it('a interface mantém o controle de ocultar valores no resumo e nos gráficos', async () => {
