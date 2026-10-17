@@ -39,8 +39,8 @@ describe('Nuvem Fit organization and navigation', () => {
 
   it('refreshes cached assets after the navigation redesign', async () => {
     const sw = await fs.readFile(swUrl, 'utf8');
-    assert.ok(sw.includes('nuvem-shell-v15'));
-    assert.ok(sw.includes('styles.css?v=15'));
-    assert.ok(sw.includes('app.js?v=15'));
+    assert.ok(sw.includes('nuvem-shell-v26'));
+    assert.ok(sw.includes('styles.css?v=26'));
+    assert.ok(sw.includes('app.js?v=29'));
   });
 });
