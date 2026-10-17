@@ -30,10 +30,10 @@ async function init(){try{const response=await fetch("/api/app/config",{cache:"n
 const params=new URLSearchParams(location.search),title=params.get("title")||"",source=params.get("source");if(title){$("#player-title").textContent=title;$("#track-title").textContent=title;}if(source){
   try{
     const url=new URL(source);
-    const host=url.hostname.toLowerCase().replace(/^www\\./,"");
+    const host=url.hostname.toLowerCase().replace(/^www\./,"");
     const openHosts=["upload.wikimedia.org","archive.org"];
     const platformHosts=["youtube.com","m.youtube.com","music.youtube.com","youtu.be","soundcloud.com","m.soundcloud.com"];
-    const direct=/\\.(mp3|wav|ogg|oga|flac|m4a|aac|opus|aiff)$/i.test(url.pathname);
+    const direct=/\.(mp3|wav|ogg|oga|flac|m4a|aac|opus|aiff)$/i.test(url.pathname);
     const openDirect=url.protocol==="https:"&&openHosts.includes(host)&&direct;
     const platform=url.protocol==="https:"&&platformHosts.includes(host);
     $("#source-link").href=url.href;
@@ -47,7 +47,7 @@ const params=new URLSearchParams(location.search),title=params.get("title")||"",
         if(!response.ok){let body={};try{body=await response.json()}catch{}throw new Error(body.error||"Não foi possível importar esse áudio.");}
         const blob=await response.blob();
         if(!blob.size||blob.size>12*1024*1024)throw new Error("O arquivo precisa ter até 12 MB para abrir no editor.");
-        const base=(title||"audio-importado").replace(/\\.[a-z0-9]{1,5}$/i,"").replace(/[^a-z0-9._ -]/gi,"").trim().slice(0,80)||"audio-importado";
+        const base=(title||"audio-importado").replace(/\.[a-z0-9]{1,5}$/i,"").replace(/[^a-z0-9._ -]/gi,"").trim().slice(0,80)||"audio-importado";
         setFile(new File([blob],base+".mp3",{type:"audio/mpeg"}));
         status("Áudio carregado automaticamente. Agora você pode selecionar o trecho e editar.");
       }catch(error){status(error.message||"Não consegui importar esse áudio. Tente outro resultado.",true);}
