@@ -714,18 +714,11 @@ function abrirEditorAudio(item, modo = "edit") {
   if (tab) tab.opener = null;
   else setApiStatus("#audio-search-status", "O navegador bloqueou a nova aba. Permita pop-ups para abrir o editor.", true);
 }
-async function baixarResultadoAudio(item, button) {
-  if (!session?.access_token) return setApiStatus("#audio-search-status", "Entre na sua conta para baixar áudio.", true);
-  const previous=button.textContent; button.disabled=true; button.textContent="Baixando…";
-  try {
-    const response=await fetch("/api/app/media/audio/download",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json"},body:JSON.stringify({url:item.url}),cache:"no-store"});
-    if(!response.ok){let body={};try{body=await response.json()}catch{}throw new Error(body.error||"Não foi possível baixar este arquivo.")}
-    const blob=await response.blob(); if(!blob.size)throw new Error("O arquivo recebido está vazio.");
-    const objectUrl=URL.createObjectURL(blob),link=document.createElement("a");link.href=objectUrl;link.download=((item.title||"nuvem-audio").replace(/[^\p{L}\p{N}._ -]/gu,"").trim().slice(0,80)||"nuvem-audio")+".mp3";document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
-    setApiStatus("#audio-search-status","Download iniciado: "+(item.title||"áudio")+".");
-  }catch(error){setApiStatus("#audio-search-status",error.message||"Falha no download.",true)}
-  finally{button.disabled=false;button.textContent=previous}
+function baixarResultadoAudio(item, button) {
+  if (!session?.access_token) return setApiStatus("#audio-search-status", "Entre na sua conta para abrir o editor.", true);
+  abrirEditorAudio(item, "edit");
 }
+
 async function enviarResultadoAudioWhatsapp(item, button) {
   if (!session?.access_token) return setApiStatus("#audio-search-status", "Entre na sua conta para enviar áudio.", true);
   if (!item?.downloadable || !item?.url) { abrirEditorAudio(item, "send"); return; }
@@ -765,7 +758,7 @@ function desenharResultadosAudio(results) {
     const actions = node("div", "audio-result-actions");
     let download;
     if (item.downloadable === true) {
-      download = node("button", "media-result-download", "↓ Baixar"); download.type = "button";
+      download = node("button", "media-result-download", "Editar e baixar"); download.type = "button";
       download.addEventListener("click", () => baixarResultadoAudio(item, download));
       download.title = "Baixar arquivo de áudio da fonte aberta";
     } else {
