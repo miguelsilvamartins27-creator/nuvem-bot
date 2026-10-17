@@ -1,0 +1,684 @@
+[
+  {
+    "pt": "Supino reto com barra",
+    "en": "barbell bench press",
+    "group": "Peito",
+    "equipment": "Banco e barra",
+    "terms": [
+      "supino reto",
+      "supino com barra",
+      "supino plano",
+      "supino peito"
+    ],
+    "how": [
+      "Deite no banco, apoie os pés no chão e mantenha as escápulas firmes no banco.",
+      "Segure a barra um pouco além da largura dos ombros e retire-a do suporte com controle.",
+      "Desça a barra em direção à parte média do peito, sem quicar nem perder o controle.",
+      "Empurre a barra para cima sem deixar os ombros saírem da posição. Use travas e, se necessário, um parceiro."
+    ],
+    "cues": [
+      "Punhos alinhados aos antebraços.",
+      "Não force uma amplitude que cause dor no ombro."
+    ]
+  },
+  {
+    "pt": "Supino inclinado com halteres",
+    "en": "dumbbell incline bench press",
+    "group": "Peito",
+    "equipment": "Banco inclinado e halteres",
+    "terms": [
+      "supino inclinado",
+      "supino inclinado halteres",
+      "supino com halteres"
+    ],
+    "how": [
+      "Ajuste o banco em inclinação moderada e apoie as costas e os pés.",
+      "Comece com os halteres ao lado da parte superior do peito, punhos alinhados.",
+      "Empurre para cima com controle, sem bater os halteres.",
+      "Desça devagar até uma amplitude confortável."
+    ],
+    "cues": [
+      "Evite arquear excessivamente a lombar.",
+      "Comece com carga que consiga controlar."
+    ]
+  },
+  {
+    "pt": "Crucifixo com halteres",
+    "en": "dumbbell fly",
+    "group": "Peito",
+    "equipment": "Banco e halteres",
+    "terms": [
+      "crucifixo",
+      "crucifixo halteres",
+      "voador com halteres"
+    ],
+    "how": [
+      "Deite no banco com os halteres acima do peito e cotovelos levemente flexionados.",
+      "Abra os braços em arco mantendo a mesma flexão dos cotovelos.",
+      "Pare quando sentir alongamento confortável no peito.",
+      "Feche os braços de volta sem transformar o movimento em supino."
+    ],
+    "cues": [
+      "Use carga leve a moderada.",
+      "Não force o alongamento do ombro."
+    ]
+  },
+  {
+    "pt": "Peck deck / voador",
+    "en": "lever pec deck fly",
+    "group": "Peito",
+    "equipment": "Máquina peck deck",
+    "terms": [
+      "peck deck",
+      "voador",
+      "máquina voador",
+      "crucifixo máquina"
+    ],
+    "how": [
+      "Ajuste o assento para que os apoios fiquem na altura do peito.",
+      "Encoste as costas no encosto e segure as manoplas com os cotovelos confortáveis.",
+      "Aproxime os braços à frente do corpo sem dar impulso.",
+      "Retorne devagar até a amplitude confortável."
+    ],
+    "cues": [
+      "Mantenha as costas apoiadas.",
+      "Não deixe a máquina puxar os braços para trás."
+    ]
+  },
+  {
+    "pt": "Flexão de braço",
+    "en": "push up",
+    "group": "Peito",
+    "equipment": "Peso corporal",
+    "terms": [
+      "flexão",
+      "flexão de braço",
+      "flexão no chão",
+      "push up"
+    ],
+    "how": [
+      "Coloque as mãos um pouco além da largura dos ombros e mantenha o corpo alinhado.",
+      "Contraia abdômen e glúteos e desça o peito em direção ao chão.",
+      "Empurre o chão para voltar, sem deixar o quadril cair.",
+      "Se estiver difícil, use uma superfície elevada e estável."
+    ],
+    "cues": [
+      "Pescoço neutro.",
+      "Ajuste a altura para manter a técnica."
+    ]
+  },
+  {
+    "pt": "Puxada alta na frente",
+    "en": "lat pulldown",
+    "group": "Costas",
+    "equipment": "Polia alta e barra",
+    "terms": [
+      "puxada alta",
+      "pulley frente",
+      "puxador frente",
+      "puxada na frente"
+    ],
+    "how": [
+      "Sente-se e ajuste o apoio das coxas para ficar estável.",
+      "Segure a barra um pouco além dos ombros e incline o tronco só levemente.",
+      "Puxe a barra em direção à parte superior do peito, levando os cotovelos para baixo.",
+      "Retorne devagar até estender os braços sem perder a postura."
+    ],
+    "cues": [
+      "Não puxe a barra atrás da nuca.",
+      "Evite balançar o tronco."
+    ]
+  },
+  {
+    "pt": "Remada baixa na polia",
+    "en": "seated cable row",
+    "group": "Costas",
+    "equipment": "Polia baixa",
+    "terms": [
+      "remada baixa",
+      "remada sentada",
+      "remada cabo"
+    ],
+    "how": [
+      "Sente-se com os pés apoiados e a coluna neutra.",
+      "Segure o puxador e deixe os ombros se moverem de forma controlada.",
+      "Puxe em direção ao tronco levando os cotovelos para trás.",
+      "Retorne sem arredondar a lombar nem soltar o peso de uma vez."
+    ],
+    "cues": [
+      "Não transforme a remada em balanço.",
+      "Mantenha o peito confortável e aberto."
+    ]
+  },
+  {
+    "pt": "Remada curvada com barra",
+    "en": "barbell bent over row",
+    "group": "Costas",
+    "equipment": "Barra",
+    "terms": [
+      "remada curvada",
+      "remada com barra",
+      "remada inclinada"
+    ],
+    "how": [
+      "Afaste os pés na largura do quadril e segure a barra.",
+      "Flexione levemente os joelhos e incline o tronco mantendo a coluna neutra.",
+      "Puxe a barra em direção à região inferior das costelas.",
+      "Desça devagar, mantendo a posição do tronco estável."
+    ],
+    "cues": [
+      "Use carga que não arredonde a lombar.",
+      "Peça orientação se ainda não domina a posição inclinada."
+    ]
+  },
+  {
+    "pt": "Barra fixa",
+    "en": "pull up",
+    "group": "Costas",
+    "equipment": "Barra fixa",
+    "terms": [
+      "barra fixa",
+      "pull up",
+      "puxada na barra"
+    ],
+    "how": [
+      "Segure a barra com pegada confortável e estável.",
+      "Inicie com os ombros controlados e o corpo sem balanço excessivo.",
+      "Puxe o corpo para cima até onde consiga sem perder a técnica.",
+      "Desça com controle; use assistência se necessário."
+    ],
+    "cues": [
+      "Evite saltar para alcançar a barra.",
+      "Uma máquina assistida ou elástico adequado pode ajudar."
+    ]
+  },
+  {
+    "pt": "Remada unilateral com halter",
+    "en": "dumbbell row",
+    "group": "Costas",
+    "equipment": "Halter e banco",
+    "terms": [
+      "remada unilateral",
+      "remada serrote",
+      "remada com halter"
+    ],
+    "how": [
+      "Apoie uma mão e um joelho no banco firme, mantendo as costas neutras.",
+      "Segure o halter com o braço estendido em direção ao chão.",
+      "Puxe o cotovelo para trás perto do tronco.",
+      "Desça devagar e complete as repetições antes de trocar de lado."
+    ],
+    "cues": [
+      "Evite girar o tronco para levantar mais peso.",
+      "Mantenha o apoio estável."
+    ]
+  },
+  {
+    "pt": "Agachamento livre com barra",
+    "en": "barbell squat",
+    "group": "Pernas",
+    "equipment": "Rack e barra",
+    "terms": [
+      "agachamento livre",
+      "agachamento com barra",
+      "agachamento",
+      "squat"
+    ],
+    "how": [
+      "Posicione a barra de forma estável e ajuste as travas do rack.",
+      "Afaste os pés numa posição confortável e mantenha o tronco firme.",
+      "Flexione quadris e joelhos, descendo apenas até onde mantenha controle e conforto.",
+      "Empurre o chão para voltar à posição inicial."
+    ],
+    "cues": [
+      "Use rack e travas de segurança.",
+      "Não force profundidade nem carga se perder o equilíbrio."
+    ]
+  },
+  {
+    "pt": "Leg press",
+    "en": "leg press",
+    "group": "Pernas",
+    "equipment": "Máquina leg press",
+    "terms": [
+      "leg press",
+      "leg press 45",
+      "prensa de pernas"
+    ],
+    "how": [
+      "Ajuste o encosto e sente-se com a lombar apoiada.",
+      "Posicione os pés na plataforma numa largura confortável.",
+      "Destrave e desça a plataforma devagar, sem tirar o quadril do encosto.",
+      "Empurre sem travar os joelhos bruscamente e destrave apenas conforme a máquina."
+    ],
+    "cues": [
+      "Não deixe a lombar arredondar no fundo.",
+      "Aprenda a trava específica da máquina."
+    ]
+  },
+  {
+    "pt": "Cadeira extensora",
+    "en": "leg extension",
+    "group": "Pernas",
+    "equipment": "Máquina extensora",
+    "terms": [
+      "cadeira extensora",
+      "extensora",
+      "extensão de joelho"
+    ],
+    "how": [
+      "Ajuste o eixo da máquina próximo ao eixo do joelho e o rolo acima dos tornozelos.",
+      "Sente-se com as costas apoiadas e segure as manoplas.",
+      "Estenda os joelhos de forma controlada, sem dar impulso.",
+      "Desça devagar até a posição inicial."
+    ],
+    "cues": [
+      "Não use carga que provoque dor no joelho.",
+      "Ajuste a máquina ao seu corpo."
+    ]
+  },
+  {
+    "pt": "Mesa flexora",
+    "en": "lying leg curl",
+    "group": "Pernas",
+    "equipment": "Máquina flexora deitada",
+    "terms": [
+      "mesa flexora",
+      "flexora deitada",
+      "flexão de pernas"
+    ],
+    "how": [
+      "Deite de bruços e ajuste o rolo acima dos calcanhares.",
+      "Segure as manoplas e mantenha o quadril apoiado.",
+      "Flexione os joelhos trazendo o rolo para cima sem levantar o quadril.",
+      "Retorne devagar sem deixar o peso bater."
+    ],
+    "cues": [
+      "Mantenha o movimento controlado.",
+      "Ajuste o rolo para não pressionar o tendão de Aquiles."
+    ]
+  },
+  {
+    "pt": "Levantamento terra romeno (stiff)",
+    "en": "dumbbell romanian deadlift",
+    "group": "Pernas",
+    "equipment": "Halteres",
+    "terms": [
+      "stiff",
+      "levantamento terra romeno",
+      "terra romeno",
+      "romeno com halteres"
+    ],
+    "how": [
+      "Segure os halteres à frente das coxas, com joelhos levemente flexionados.",
+      "Leve o quadril para trás e desça os halteres perto das pernas.",
+      "Pare quando sentir alongamento confortável mantendo a coluna neutra.",
+      "Empurre o chão e traga o quadril à frente para retornar."
+    ],
+    "cues": [
+      "O movimento vem do quadril, não de arredondar as costas.",
+      "Use amplitude confortável e carga leve ao aprender."
+    ]
+  },
+  {
+    "pt": "Elevação lateral com halteres",
+    "en": "dumbbell lateral raise",
+    "group": "Ombros",
+    "equipment": "Halteres",
+    "terms": [
+      "elevação lateral",
+      "elevação lateral ombros",
+      "lateral raise"
+    ],
+    "how": [
+      "Fique em pé com halteres ao lado do corpo e cotovelos levemente flexionados.",
+      "Eleve os braços para os lados até uma altura confortável.",
+      "Pause brevemente sem encolher os ombros.",
+      "Desça devagar mantendo o controle."
+    ],
+    "cues": [
+      "Evite impulso do tronco.",
+      "Não precisa elevar acima da amplitude confortável."
+    ]
+  },
+  {
+    "pt": "Desenvolvimento com halteres",
+    "en": "dumbbell shoulder press",
+    "group": "Ombros",
+    "equipment": "Halteres e banco",
+    "terms": [
+      "desenvolvimento",
+      "desenvolvimento halteres",
+      "desenvolvimento de ombro"
+    ],
+    "how": [
+      "Sente-se com as costas apoiadas e halteres na altura dos ombros.",
+      "Mantenha os punhos alinhados e o abdômen firme.",
+      "Empurre os halteres para cima sem arquear excessivamente a lombar.",
+      "Desça com controle até a posição inicial confortável."
+    ],
+    "cues": [
+      "Pare se houver dor no ombro.",
+      "Não force uma amplitude que não consiga controlar."
+    ]
+  },
+  {
+    "pt": "Rosca direta com barra",
+    "en": "barbell curl",
+    "group": "Bíceps",
+    "equipment": "Barra",
+    "terms": [
+      "rosca direta",
+      "rosca barra",
+      "rosca bíceps"
+    ],
+    "how": [
+      "Fique em pé com a barra junto às coxas e cotovelos próximos ao corpo.",
+      "Flexione os cotovelos para levantar a barra sem balançar o tronco.",
+      "Pause brevemente no alto sem levar os cotovelos muito à frente.",
+      "Desça devagar até quase estender os braços."
+    ],
+    "cues": [
+      "Evite jogar o corpo para trás.",
+      "Use carga que permita controlar a descida."
+    ]
+  },
+  {
+    "pt": "Rosca martelo",
+    "en": "hammer curl",
+    "group": "Bíceps",
+    "equipment": "Halteres",
+    "terms": [
+      "rosca martelo",
+      "martelo",
+      "bíceps martelo"
+    ],
+    "how": [
+      "Segure os halteres ao lado do corpo com as palmas voltadas uma para a outra.",
+      "Flexione um ou os dois cotovelos mantendo a pegada neutra.",
+      "Suba sem balançar os ombros ou o tronco.",
+      "Desça devagar e repita."
+    ],
+    "cues": [
+      "Mantenha os cotovelos próximos ao tronco.",
+      "Evite acelerar a descida."
+    ]
+  },
+  {
+    "pt": "Tríceps na polia (pulley)",
+    "en": "cable pushdown",
+    "group": "Tríceps",
+    "equipment": "Polia alta e corda ou barra",
+    "terms": [
+      "tríceps pulley",
+      "triceps pulley",
+      "tríceps na polia",
+      "pulley tríceps"
+    ],
+    "how": [
+      "Ajuste a polia alta e segure a barra ou corda.",
+      "Mantenha os cotovelos próximos ao tronco.",
+      "Estenda os cotovelos para baixo sem inclinar o corpo para usar impulso.",
+      "Retorne devagar até a posição inicial."
+    ],
+    "cues": [
+      "O movimento acontece principalmente no cotovelo.",
+      "Não deixe os ombros subirem durante as repetições."
+    ]
+  },
+  {
+    "pt": "Tríceps testa",
+    "en": "lying triceps extension",
+    "group": "Tríceps",
+    "equipment": "Halteres ou barra EZ e banco",
+    "terms": [
+      "tríceps testa",
+      "triceps testa",
+      "extensão de tríceps deitado"
+    ],
+    "how": [
+      "Deite no banco segurando halteres ou barra EZ acima dos ombros.",
+      "Mantenha os braços relativamente estáveis e flexione os cotovelos.",
+      "Desça o peso de forma controlada até uma amplitude confortável.",
+      "Estenda os cotovelos para retornar sem deixar o peso escapar."
+    ],
+    "cues": [
+      "Comece com carga leve.",
+      "Evite qualquer movimento que incomode cotovelos ou ombros."
+    ]
+  },
+  {
+    "pt": "Panturrilha em pé",
+    "en": "standing calf raise",
+    "group": "Pernas",
+    "equipment": "Máquina ou apoio estável",
+    "terms": [
+      "panturrilha em pé",
+      "elevação panturrilha",
+      "panturrilha máquina"
+    ],
+    "how": [
+      "Fique com os pés firmes no apoio e use as mãos para estabilizar.",
+      "Eleve os calcanhares sem quicar.",
+      "Pause brevemente no alto e desça até um alongamento confortável.",
+      "Repita com o tronco estável."
+    ],
+    "cues": [
+      "Não use um degrau instável.",
+      "Controle a descida."
+    ]
+  },
+  {
+    "pt": "Abdominal crunch",
+    "en": "crunch",
+    "group": "Abdômen",
+    "equipment": "Colchonete",
+    "terms": [
+      "abdominal",
+      "crunch",
+      "abdominal crunch",
+      "abdominal curto"
+    ],
+    "how": [
+      "Deite de costas com joelhos dobrados e pés apoiados.",
+      "Mantenha o pescoço relaxado e as mãos leves junto à cabeça ou no peito.",
+      "Eleve um pouco os ombros contraindo o abdômen.",
+      "Desça devagar sem puxar a cabeça com as mãos."
+    ],
+    "cues": [
+      "Não precisa sentar completamente.",
+      "Pare se sentir dor no pescoço ou nas costas."
+    ]
+  },
+  {
+    "pt": "Prancha",
+    "en": "plank",
+    "group": "Abdômen",
+    "equipment": "Colchonete",
+    "terms": [
+      "prancha",
+      "prancha abdominal",
+      "plank"
+    ],
+    "how": [
+      "Apoie antebraços e pontas dos pés, com cotovelos sob os ombros.",
+      "Mantenha cabeça, tronco e quadril alinhados.",
+      "Respire normalmente e segure apenas enquanto mantiver a posição.",
+      "Apoie os joelhos para uma variação mais leve."
+    ],
+    "cues": [
+      "Não prenda a respiração.",
+      "Encerre a série antes de perder o alinhamento."
+    ]
+  },
+  {
+    "pt": "Hip thrust",
+    "en": "barbell hip thrust",
+    "group": "Glúteos",
+    "equipment": "Banco e barra ou carga",
+    "terms": [
+      "hip thrust",
+      "elevação pélvica",
+      "elevação de quadril",
+      "glute thrust"
+    ],
+    "how": [
+      "Apoie a parte alta das costas num banco firme e mantenha os pés apoiados.",
+      "Posicione a carga de forma segura sobre o quadril, com proteção adequada.",
+      "Empurre o chão e eleve o quadril até o tronco ficar alinhado.",
+      "Desça com controle sem deixar a carga rolar."
+    ],
+    "cues": [
+      "Não hiperestenda a lombar no topo.",
+      "Aprenda a montagem com um profissional."
+    ]
+  },
+  {
+    "pt": "Cadeira abdutora",
+    "en": "hip abduction machine",
+    "group": "Glúteos",
+    "equipment": "Máquina abdutora",
+    "terms": [
+      "cadeira abdutora",
+      "abdutora",
+      "abdução de quadril"
+    ],
+    "how": [
+      "Sente-se com as costas apoiadas e ajuste os apoios conforme a máquina.",
+      "Comece com as pernas na posição indicada pelo equipamento.",
+      "Afaste os joelhos de forma controlada sem dar impulso.",
+      "Retorne devagar à posição inicial."
+    ],
+    "cues": [
+      "Use amplitude confortável.",
+      "Evite bater os pesos no retorno."
+    ]
+  },
+  {
+    "pt": "Mergulho nas paralelas",
+    "en": "assisted triceps dip",
+    "group": "Tríceps",
+    "equipment": "Paralelas ou máquina assistida",
+    "terms": [
+      "mergulho paralelas",
+      "paralelas",
+      "triceps dip",
+      "dips"
+    ],
+    "how": [
+      "Segure as barras estáveis e firme o corpo antes de iniciar.",
+      "Flexione os cotovelos para descer apenas até uma amplitude confortável.",
+      "Empurre as barras para retornar sem balançar.",
+      "Use máquina assistida se não conseguir controlar o movimento."
+    ],
+    "cues": [
+      "Pode exigir bastante do ombro; não force a amplitude.",
+      "Evite barras instáveis."
+    ]
+  },
+  {
+    "pt": "Corrida na esteira",
+    "en": "treadmill running",
+    "group": "Cardio",
+    "equipment": "Esteira",
+    "terms": [
+      "esteira",
+      "corrida esteira",
+      "correr na esteira"
+    ],
+    "how": [
+      "Prenda a chave de segurança e comece em velocidade baixa.",
+      "Aumente gradualmente até um ritmo em que mantenha controle e postura.",
+      "Olhe para a frente e evite saltar nas laterais durante a corrida.",
+      "Reduza a velocidade antes de parar e saia apenas quando a esteira estiver imóvel."
+    ],
+    "cues": [
+      "Use calçado adequado.",
+      "Interrompa se sentir tontura, dor no peito ou mal-estar."
+    ]
+  },
+  {
+    "pt": "Bicicleta ergométrica",
+    "en": "stationary bike",
+    "group": "Cardio",
+    "equipment": "Bicicleta ergométrica",
+    "terms": [
+      "bicicleta ergométrica",
+      "bike",
+      "bicicleta academia",
+      "bike ergométrica"
+    ],
+    "how": [
+      "Ajuste o banco para que o joelho fique levemente flexionado no ponto mais baixo da pedalada.",
+      "Apoie os pés e segure o guidão sem tensionar os ombros.",
+      "Comece com resistência baixa e aumente gradualmente se estiver confortável.",
+      "Diminua a resistência e a velocidade antes de terminar."
+    ],
+    "cues": [
+      "Ajuste a altura do banco antes de começar.",
+      "Mantenha uma intensidade que permita controlar a respiração."
+    ]
+  },
+  {
+    "pt": "Agachamento com peso corporal",
+    "en": "bodyweight squat",
+    "group": "Pernas",
+    "equipment": "Peso corporal",
+    "terms": [
+      "agachamento sem peso",
+      "agachamento livre sem barra",
+      "agachamento corporal"
+    ],
+    "how": [
+      "Fique em pé com os pés numa posição confortável.",
+      "Leve o quadril para trás e flexione os joelhos mantendo os pés apoiados.",
+      "Desça até onde mantenha equilíbrio e conforto.",
+      "Empurre o chão para retornar à posição inicial."
+    ],
+    "cues": [
+      "Use um banco como referência se ajudar.",
+      "Não force a amplitude."
+    ]
+  },
+  {
+    "pt": "Rosca concentrada",
+    "en": "concentration curl",
+    "group": "Bíceps",
+    "equipment": "Halter",
+    "terms": [
+      "rosca concentrada",
+      "concentration curl"
+    ],
+    "how": [
+      "Sente-se com os pés firmes e apoie o braço na parte interna da coxa.",
+      "Flexione o cotovelo para erguer o halter sem girar o tronco.",
+      "Pause brevemente no alto.",
+      "Desça devagar até a posição inicial."
+    ],
+    "cues": [
+      "Não use impulso.",
+      "Mantenha o punho alinhado."
+    ]
+  },
+  {
+    "pt": "Crossover na polia",
+    "en": "cable crossover",
+    "group": "Peito",
+    "equipment": "Polias",
+    "terms": [
+      "crossover",
+      "cross over",
+      "crucifixo na polia"
+    ],
+    "how": [
+      "Ajuste as polias e dê um passo à frente com base estável.",
+      "Mantenha cotovelos levemente flexionados e tronco firme.",
+      "Aproxime as mãos à frente do corpo num arco confortável.",
+      "Retorne devagar sem deixar os ombros serem puxados para trás."
+    ],
+    "cues": [
+      "Use carga controlável.",
+      "Evite exagerar a amplitude dos ombros."
+    ]
+  }
+]
