@@ -144,3 +144,18 @@ html,body{min-height:100%;overflow-x:hidden}
  .studio-symbol{width:44px!important;height:44px!important;min-width:44px!important}
  .studio-shell{padding-inline:9px!important}
 }
+
+/* Audio Studio — superfícies foscas e sem branco estourado */
+:root{--bg:#d9d8d2;--panel:#e4e3dc;--line:#c8c7bf;--text:#292a27;--muted:#65665f;--lime:#343630;--accent:#343630}
+html,body{background:#d9d8d2!important;color:#292a27!important}
+.studio-topbar{background:rgba(206,205,197,.97)!important;border-color:#c0bfb7!important;color:#292a27!important}
+.studio-intro{background:linear-gradient(130deg,#d0cfc7,#e2e1da)!important;border-color:#c5c4bc!important;box-shadow:0 5px 18px #292a2408!important}
+.panel,.timeline-panel{background:#e4e3dc!important;color:#292a27!important;border-color:#c8c7bf!important;box-shadow:0 4px 15px #292a2408!important}
+.upload-zone,.range-controls,.status,.timeline-state,.time-counter,.file-name{background:#d8d7d0!important;color:#45463f!important;border-color:#c5c4bc!important}
+input,select,textarea,.range-controls input,.control-label input[type=number]{background:#d4d3cb!important;color:#292a27!important;border-color:#bdbcb3!important}
+.primary-button,.play-button,.upload-icon{background:#343630!important;color:#f0efe9!important;border-color:#343630!important;box-shadow:none!important}
+.secondary-button,.small-tool,.back-link{background:#d2d1c9!important;color:#30312c!important;border-color:#bdbcb3!important;box-shadow:none!important}
+.waveform-wrap{background:repeating-linear-gradient(90deg,#d5d4cd 0,#d5d4cd calc(10% - 1px),#c3c2b9 calc(10% - 1px),#c3c2b9 10%)!important;border-color:#bdbcb3!important}
+.studio-symbol{background:linear-gradient(145deg,#d0cfc7,#bdbcb3)!important;color:#343530!important;border-color:#bdbcb3!important;box-shadow:none!important}
+.timeline-state.error{background:#e3d2cf!important;color:#782e2e!important;border-color:#cba9a4!important}
+@media(max-width:760px){.studio-topbar{background:rgba(206,205,197,.97)!important}.studio-intro{background:linear-gradient(130deg,#d0cfc7,#e2e1da)!important}}
