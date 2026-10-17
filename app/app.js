@@ -102,11 +102,23 @@ $("#finance-eye")?.addEventListener("click",()=>{esconderValoresFinanceiros=!esc
 
 
 // Nuvem Studio: uploads go directly to authenticated endpoints and are not persisted.
+function identificarTipoArquivo(file) {
+  const mime = String(file?.type || "").toLowerCase();
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("video/")) return "video";
+  if (mime.startsWith("audio/")) return "audio";
+  const ext = String(file?.name || "").split(".").pop().toLowerCase();
+  if (["jpg","jpeg","png","webp","gif","avif","tif","tiff","heic","heif"].includes(ext)) return "image";
+  if (["mp4","m4v","mov","webm","mkv","avi","3gp","mpeg"].includes(ext)) return "video";
+  if (["mp3","wav","ogg","oga","flac","m4a","aac","opus","aiff"].includes(ext)) return "audio";
+  return "unknown";
+}
 async function enviarArquivoParaDownload(path, file, statusSelector, button, fallbackName) {
-  if (!session || !file) { setApiStatus(statusSelector, "Entre e escolha um arquivo primeiro.", true); return; }
+  if (!session?.access_token || !file) { setApiStatus(statusSelector, "Entre na sua conta e escolha um arquivo primeiro.", true); return; }
+  if (file.size === 0) { setApiStatus(statusSelector, "Esse arquivo está vazio. Escolha outro arquivo.", true); return; }
   if (file.size > 12 * 1024 * 1024) { setApiStatus(statusSelector, "O limite é 12 MB por arquivo.", true); return; }
   button.disabled = true;
-  setApiStatus(statusSelector, "Processando arquivo com segurança…");
+  setApiStatus(statusSelector, "Enviando e processando o arquivo…");
   try {
     const response = await fetch(path, {
       method: "POST",
@@ -115,8 +127,19 @@ async function enviarArquivoParaDownload(path, file, statusSelector, button, fal
       cache: "no-store"
     });
     if (!response.ok) {
-      let message = "Não foi possível processar o arquivo.";
-      try { const body = await response.json(); if (body.error) message = body.error; } catch {}
+      let message = "";
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        try { const body = await response.json(); message = body.error || ""; } catch {}
+      } else {
+        try { message = (await response.text()).slice(0, 240); } catch {}
+      }
+      if (!message || /<!doctype html|<html/i.test(message)) {
+        message = response.status === 401 ? "Sua sessão expirou. Entre novamente." :
+          response.status === 413 ? "O arquivo passou do limite permitido de 12 MB." :
+          response.status === 429 ? "Você usou muitas conversões em pouco tempo. Aguarde um minuto." :
+          "O servidor não conseguiu processar o arquivo (erro " + response.status + "). Tente um arquivo menor ou de outro formato.";
+      }
       throw new Error(message);
     }
     const blob = await response.blob();
@@ -128,24 +151,26 @@ async function enviarArquivoParaDownload(path, file, statusSelector, button, fal
     link.href = url;
     link.download = name;
     link.className = "button button-primary media-download-link";
+    link.style.display = "inline-flex";
+    link.style.marginTop = "10px";
     document.body.appendChild(link);
     link.click();
-    link.remove();
-    setApiStatus(statusSelector, "Pronto! O download foi iniciado.");
+    setApiStatus(statusSelector, "Conversão concluída. Se o download não abriu, use o botão abaixo.");
+    window.setTimeout(() => link.remove(), 60_000);
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   } catch (error) {
     setApiStatus(statusSelector, error.message || "Erro ao processar arquivo.", true);
   } finally {
-    button.disabled = !session;
+    button.disabled = !session?.access_token;
   }
 }
 $("#sticker-form")?.addEventListener("submit", async event => {
   event.preventDefault();
   const file = $("#sticker-file")?.files?.[0];
   if (!file) return setApiStatus("#sticker-status", "Escolha uma imagem, GIF ou vídeo.", true);
-  const isVideo = file.type.startsWith("video/");
-  const isImage = file.type.startsWith("image/");
-  if (!isVideo && !isImage) return setApiStatus("#sticker-status", "Formato não suportado. Escolha uma imagem, GIF ou vídeo.", true);
+  const kind = identificarTipoArquivo(file);
+  if (!["image", "video"].includes(kind)) return setApiStatus("#sticker-status", "Formato não reconhecido. Escolha JPG, PNG, WEBP, GIF, MP4 ou WEBM.", true);
+  const isVideo = kind === "video";
   const endpoint = isVideo ? "/api/app/media/sticker-video" : "/api/app/media/sticker";
   await enviarArquivoParaDownload(endpoint, file, "#sticker-status", $("#sticker-submit"), isVideo ? "nuvem-figurinha-animada.webp" : "nuvem-figurinha.webp");
 });
@@ -153,7 +178,7 @@ $("#audio-form")?.addEventListener("submit", async event => {
   event.preventDefault();
   const file = $("#audio-file")?.files?.[0];
   if (!file) return setApiStatus("#audio-status", "Escolha um vídeo ou áudio.", true);
-  if (!(file.type.startsWith("video/") || file.type.startsWith("audio/"))) return setApiStatus("#audio-status", "Escolha um arquivo de áudio ou vídeo compatível.", true);
+  if (!["video", "audio"].includes(identificarTipoArquivo(file))) return setApiStatus("#audio-status", "Formato não reconhecido. Escolha MP3, WAV, M4A, MP4, MOV ou WEBM.", true);
   await enviarArquivoParaDownload("/api/app/media/audio", file, "#audio-status", $("#audio-submit"), "nuvem-audio.mp3");
 });
 function desenharResultadosAudio(results) {
