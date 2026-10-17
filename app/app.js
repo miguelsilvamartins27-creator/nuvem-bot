@@ -756,17 +756,11 @@ function desenharResultadosAudio(results) {
     if (item.embedUrl) { try { const embed = new URL(item.embedUrl); if (embed.protocol === "https:" && embed.hostname === "www.youtube-nocookie.com" && /^\/embed\/[\w-]{11}$/.test(embed.pathname)) { const frame = document.createElement("iframe"); frame.className = "audio-result-embed"; frame.src = embed.href; frame.title = "Prévia: " + (item.title || "resultado de áudio"); frame.loading = "lazy"; frame.referrerPolicy = "strict-origin-when-cross-origin"; frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"; frame.allowFullscreen = true; content.appendChild(frame); } } catch {} }
     else if (item.downloadable === true && ["upload.wikimedia.org","archive.org"].includes(host)) { const player = node("audio", "media-audio-player"); player.controls = true; player.preload = "none"; player.src = url.href; player.setAttribute("aria-label", "Reproduzir " + (item.title || "áudio")); content.appendChild(player); }
     const actions = node("div", "audio-result-actions");
-    let download;
-    if (item.downloadable === true) {
-      download = node("button", "media-result-download", "Editar e baixar"); download.type = "button";
-      download.addEventListener("click", () => baixarResultadoAudio(item, download));
-      download.title = "Baixar arquivo de áudio da fonte aberta";
-    } else {
-      download = node("a", "media-result-download", "↗ Baixar na fonte"); download.href = url.href; download.target = "_blank"; download.rel = "noopener noreferrer";
-      download.setAttribute("aria-label", "Abrir a plataforma para ver as opções de download");
-    }
+    const download = node("button", "media-result-download", "✂ Editar e baixar");
+    download.type = "button";
+    download.addEventListener("click", () => baixarResultadoAudio(item, download));
+    download.title = item.downloadable === true ? "Abrir o editor com este áudio" : "Abrir o editor; esta plataforma pode exigir importação manual do arquivo";
     actions.appendChild(download);
-    const edit = node("button", "audio-action-button", "✂ Editar"); edit.type = "button"; edit.addEventListener("click", () => abrirEditorAudio(item, "edit")); actions.appendChild(edit);
     const send = node("button", "audio-action-button audio-action-send", "↗ WhatsApp"); send.type = "button"; send.addEventListener("click", () => enviarResultadoAudioWhatsapp(item, send)); actions.appendChild(send);
     const sourceLink = node("a", "audio-source-link", item.embedUrl ? "Prévia / fonte ↗" : "Abrir fonte ↗"); sourceLink.href = url.href; sourceLink.target = "_blank"; sourceLink.rel = "noopener noreferrer"; actions.appendChild(sourceLink);
     content.appendChild(actions); card.append(media, content); area.appendChild(card); shown++;
