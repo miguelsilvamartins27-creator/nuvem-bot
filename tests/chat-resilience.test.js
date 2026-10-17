@@ -35,6 +35,7 @@ describe('Nuvem AI chat reliability and responsive design', () => {
     const html = await fs.readFile(htmlUrl, 'utf8');
     const css = await fs.readFile(cssUrl, 'utf8');
     const sw = await fs.readFile(swUrl, 'utf8');
+    const api = await fs.readFile(apiUrl, 'utf8');
     assert.ok(html.includes('polish.css?v=6'));
     assert.ok(html.includes('app.js?v=35'));
     assert.ok(css.includes('--n-accent:#6d8f7e'));
