@@ -34,7 +34,7 @@ body{background:radial-gradient(ellipse at 80% -20%,#1a2b4b 0,transparent 45%),v
 /* NUVEM 2.0 — monochrome command center */
 :root{color-scheme:dark;--bg:#08090a;--panel:#111214;--line:#292b2f;--text:#f5f5f5;--muted:#96999f;--purple:#f5f5f5;--green:#d8f36a;--pink:#d8d8d8;--blue:#c6c9ce;font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
 body{background:#08090a;color:#f5f5f5;letter-spacing:-.01em}
-body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(ellipse at 80% 0%,#fff08,transparent 35%),linear-gradient(#ffffff03 1px,transparent 1px),linear-gradient(90deg,#ffffff03 1px,transparent 1px);background-size:auto,48px 48px,48px 48px}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(ellipse at 80% 0%,#ffffff08,transparent 35%),linear-gradient(#ffffff03 1px,transparent 1px),linear-gradient(90deg,#ffffff03 1px,transparent 1px);background-size:auto,48px 48px,48px 48px}
 .sidebar{background:#090a0b;border-color:#292b2f}.brand-mark{background:#f5f5f5;color:#08090a;border-radius:10px;box-shadow:0 0 28px #ffffff10}.side-label,.eyebrow{color:#777b81;letter-spacing:1.8px}
 .nav-item{color:#a0a2a6;transition:background .2s,color .2s,transform .2s}.nav-item:hover{background:#1b1c1e;color:#fff;transform:translateX(2px)}.nav-item.active{background:#202123;color:#fff;box-shadow:inset 2px 0 #f5f5f5}
 .privacy-note,.connection-pill,.panel,.feature-card,.tool-card,.stat-card,.money-hero,.reminder-hero{background:#111214!important;border-color:#292b2f!important;box-shadow:none!important}
