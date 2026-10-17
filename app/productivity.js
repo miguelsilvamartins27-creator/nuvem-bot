@@ -105,6 +105,7 @@
       edit.type = "button";
       edit.addEventListener("click", () => {
         editingTaskId = task.id;
+        $p("#task-form-heading").textContent = "Editar tarefa";
         $p("#task-title").value = task.title || "";
         $p("#task-description").value = task.description || "";
         $p("#task-priority").value = task.priority || "medium";
@@ -163,6 +164,7 @@
   function resetTaskForm() {
     editingTaskId = null;
     $p("#task-form")?.reset();
+    $p("#task-form-heading").textContent = "Nova tarefa";
     $p("#task-priority").value = "medium";
     $p("#task-submit").textContent = "＋ Criar tarefa";
     $p("#task-cancel-edit").hidden = true;
@@ -172,6 +174,7 @@
     if (!session?.access_token) return status("#task-status", "Entre na conta para salvar tarefas.", true);
     const title = $p("#task-title").value.trim();
     if (!title) return status("#task-status", "Digite um título para a tarefa.", true);
+    const wasEditing = Boolean(editingTaskId);
     const body = {
       title,
       description: $p("#task-description").value.trim(),
@@ -180,14 +183,14 @@
     };
     const button = $p("#task-submit");
     button.disabled = true;
-    status("#task-status", editingTaskId ? "Salvando alterações…" : "Criando tarefa…");
+    status("#task-status", wasEditing ? "Salvando alterações…" : "Criando tarefa…");
     try {
-      if (editingTaskId) await api("/api/app/tasks/" + encodeURIComponent(editingTaskId), { method: "PATCH", body: JSON.stringify(body) });
+      if (wasEditing) await api("/api/app/tasks/" + encodeURIComponent(editingTaskId), { method: "PATCH", body: JSON.stringify(body) });
       else await api("/api/app/tasks", { method: "POST", body: JSON.stringify(body) });
       resetTaskForm();
       tasksLoaded = false;
       await loadTasks(true);
-      status("#task-status", editingTaskId ? "Tarefa atualizada." : "✓ Tarefa salva na sua conta.");
+      status("#task-status", wasEditing ? "✓ Tarefa atualizada." : "✓ Tarefa salva na sua conta.");
     } catch (error) { status("#task-status", error.message || "Não foi possível salvar a tarefa.", true); }
     finally { button.disabled = false; }
   });
@@ -234,6 +237,7 @@
       edit.type = "button";
       edit.addEventListener("click", () => {
         editingNoteId = note.id;
+        $p("#note-form-heading").textContent = "Editar nota";
         $p("#note-title").value = note.title || "";
         $p("#note-content").value = note.content || "";
         $p("#note-pinned").checked = !!note.is_pinned;
@@ -276,6 +280,7 @@
   function resetNoteForm() {
     editingNoteId = null;
     $p("#note-form")?.reset();
+    $p("#note-form-heading").textContent = "Nova nota";
     $p("#note-submit").textContent = "＋ Salvar nota";
     $p("#note-cancel-edit").hidden = true;
   }
